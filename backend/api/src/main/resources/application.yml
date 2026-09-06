@@ -1,0 +1,53 @@
+spring:
+  application:
+    name: ours-api
+  threads:
+    virtual:
+      enabled: true
+  mongodb:
+    uri: ${SPRING_MONGODB_URI}
+  data:
+    mongodb:
+      # Flamingock owns every index and collection. See common/.../changes.
+      auto-index-creation: false
+  security:
+    oauth2:
+      client:
+        registration:
+          keycloak:
+            client-id: ours-web
+            client-secret: ${OURS_WEB_CLIENT_SECRET}
+            authorization-grant-type: authorization_code
+            scope: openid,profile
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+        provider:
+          keycloak:
+            # Discovery against the public issuer. From inside the cluster this hairpins through
+            # the Ingress, which is the documented fallback in docs/architecture.md section 5.
+            issuer-uri: ${KEYCLOAK_ISSUER_URI}
+
+server:
+  # ingress-nginx sets X-Forwarded-*; Spring needs them to build the redirect URI and cookies.
+  forward-headers-strategy: framework
+  servlet:
+    session:
+      timeout: 12h
+      cookie:
+        name: OURS_SESSION
+        http-only: true
+        secure: true
+        same-site: strict
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+logging:
+  level:
+    dev.ours: INFO

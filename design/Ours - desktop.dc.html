@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Newsreader:ital,wght@0,400;0,500;1,400&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Lora:ital,wght@0,400;0,500;1,400&family=Inter+Tight:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#e9e5dc;font-family:'Inter Tight',system-ui,sans-serif;color:#121110}
+a{color:#c84b31;text-decoration:none}a:hover{text-decoration:underline;text-underline-offset:3px}
+input,button,textarea{font:inherit}
+*{box-sizing:border-box}
+.ours{--bg:#faf9f6;--surface:#f0ede5;--surface-2:#e8e4d9;--fg1:#121110;--fg2:#5a574f;--fg3:#8a857a;--border:#d4d0c5;--accent:#c84b31;--accent-soft:rgba(200,75,49,.12);--green:#78866a;--green-soft:rgba(120,134,106,.16);--font-serif:'Newsreader',Georgia,serif;--font-sans:'Inter Tight',system-ui,sans-serif;--font-mono:'JetBrains Mono',ui-monospace,monospace;--shadow-md:0 8px 24px rgba(40,30,20,.12)}
+.ours[data-theme="dark"]{--bg:#121110;--surface:#1a1917;--surface-2:#23211e;--fg1:#faf9f6;--fg2:#a8a49a;--fg3:#6e6a61;--border:#2e2b26;--accent:#d4593a;--accent-soft:rgba(212,89,58,.16);--green:#8a9a78;--green-soft:rgba(138,154,120,.18);--shadow-md:0 8px 24px rgba(0,0,0,.4)}
+.ours[data-font="cormorant"]{--font-serif:'Cormorant Garamond',Georgia,serif}
+.ours[data-font="lora"]{--font-serif:'Lora',Georgia,serif}
+.ours[data-font="instrument"]{--font-serif:'Instrument Serif',Georgia,serif}
+.ours input::placeholder,.ours textarea::placeholder{color:var(--fg3)}
+.ours input:focus,.ours textarea:focus{outline:2px solid var(--accent);outline-offset:2px}
+.ours button:active{transform:translateY(1px)}
+.ours{--plum:#7a5c7a;--ochre:#b58b3a}
+.ours[data-theme="dark"]{--plum:#a889a8;--ochre:#cfa65a}
+</style>
+<script src="plans-data.js"></script>
+</helmet>
+<div style="padding:40px;display:flex;flex-direction:column;gap:16px;align-items:flex-start">
+<div style="display:flex;gap:16px;align-items:baseline;font-size:13px;color:#5a574f"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#8a857a">Ours · desktop 1440</span><span>Sidebar is clickable. Plans opens on the three-column itinerary (click a day item to inspect it; ideas on the right drag onto days); the tabs above it switch to Overview, Ideas, Bookings, Checklists, Budget, Documents, Map and the locked note. "New" opens a menu. Tweaks: theme, display font, her name.</span><a href="Ours — mobile prototype.dc.html">Mobile →</a><a href="Ours — identity pages.dc.html">Identity pages →</a></div>
+
+<div class="ours" data-theme="{{ theme }}" data-font="{{ fontKey }}" style="width:1440px;height:960px;background:var(--bg);color:var(--fg1);font-family:var(--font-sans);font-size:15px;line-height:1.5;display:grid;grid-template-columns:240px 1fr;border:1px solid var(--border);border-radius:12px;overflow:hidden">
+
+<!-- SIDEBAR -->
+<div style="border-right:1px solid var(--border);padding:28px 20px;display:flex;flex-direction:column;gap:28px;background:var(--surface)">
+  <div style="font-family:var(--font-serif);font-size:30px;line-height:1;padding:0 8px">ours</div>
+  <div style="position:relative">
+    <button onClick="{{ toggleNew }}" style="width:100%;height:44px;border-radius:8px;border:none;background:var(--accent);color:#faf9f6;font-weight:500;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>New</button>
+    <sc-if value="{{ newOpen }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute;top:50px;left:0;right:0;z-index:20;background:var(--bg);border:1px solid var(--border);border-radius:8px;box-shadow:var(--shadow-md);padding:6px;display:flex;flex-direction:column">
+        <sc-for list="{{ newItems }}" as="ni" hint-placeholder-count="4"><button onClick="{{ ni.pick }}" style="height:40px;padding:0 10px;border:none;border-radius:6px;background:transparent;color:var(--fg1);font-size:14px;text-align:left;cursor:pointer;display:flex;justify-content:space-between;align-items:center"><span>{{ ni.label }}</span><span style="font-size:12px;color:var(--fg3)">{{ ni.hint }}</span></button></sc-for>
+      </div>
+    </sc-if>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:2px">
+    <sc-for list="{{ nav }}" as="n" hint-placeholder-count="5">
+      <button onClick="{{ n.go }}" style="height:40px;padding:0 10px;border-radius:6px;border:none;border-left:1px solid {{ n.edge }};background:{{ n.bg }};color:{{ n.color }};font-size:14px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:space-between;text-align:left"><span>{{ n.label }}</span><span style="font-family:var(--font-mono);font-size:10px;color:var(--accent)">{{ n.badge }}</span></button>
+    </sc-for>
+  </div>
+  <div style="border-top:1px solid var(--border);padding-top:20px;display:flex;flex-direction:column;gap:12px">
+    <div style="font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--fg3);padding:0 10px">Upcoming</div>
+    <div style="padding:0 10px;display:flex;gap:10px;align-items:flex-start"><span style="width:6px;height:6px;border-radius:999px;background:var(--fg1);margin-top:7px;flex:none"></span><div><div style="font-size:14px">Dinner at Nonna's</div><div style="font-size:12px;color:var(--fg3)">Fri 7:00 PM</div></div></div>
+    <div style="padding:0 10px;display:flex;gap:10px;align-items:flex-start"><span style="width:6px;height:6px;border-radius:999px;background:var(--green);margin-top:7px;flex:none"></span><div><div style="font-size:14px">Lake weekend</div><div style="font-size:12px;color:var(--fg3)">Sat · in 6 days</div></div></div>
+    <div onClick="{{ goPlan }}" style="margin:4px 10px 0;padding:12px;border-radius:8px;border:1px solid var(--border);background:var(--bg);cursor:pointer"><div style="font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent)">Next trip</div><div style="display:flex;align-items:baseline;gap:6px;margin-top:4px"><span style="font-family:var(--font-serif);font-size:32px;line-height:1">214</span><span style="font-size:13px;color:var(--fg2)">days to Japan</span></div></div>
+  </div>
+  <div style="margin-top:auto;display:flex;align-items:center;gap:10px;padding:0 8px"><span style="display:flex"><img src="https://picsum.photos/seed/caseyav/64/64" style="width:28px;height:28px;border-radius:999px;object-fit:cover;filter:sepia(.2) saturate(.6);border:2px solid var(--surface)" alt=""><img src="https://picsum.photos/seed/herav/64/64" style="width:28px;height:28px;border-radius:999px;object-fit:cover;filter:sepia(.2) saturate(.6);margin-left:-8px;border:2px solid var(--surface)" alt=""></span><span style="font-size:13px;color:var(--fg2)">Casey &amp; {{ her }}</span></div>
+</div>
+
+<!-- MAIN -->
+<div style="overflow:auto;position:relative">
+
+<!-- TIMELINE -->
+<sc-if value="{{ isTimeline }}" hint-placeholder-val="{{ true }}">
+  <div style="max-width:1120px;margin:0 auto;padding:40px 48px 64px">
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px">
+      <div style="font-family:var(--font-serif);font-size:56px;line-height:1">Memories</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <sc-for list="{{ filters }}" as="f" hint-placeholder-count="6"><button onClick="{{ f.pick }}" style="height:32px;padding:0 12px;border-radius:4px;border:1px solid {{ f.border }};background:{{ f.bg }};color:{{ f.color }};font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap">{{ f.label }}</button></sc-for>
+        <div style="display:flex;align-items:center;gap:8px;height:32px;padding:0 12px;border:1px solid var(--border);border-radius:4px;color:var(--fg3);font-size:13px;width:180px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>Search</div>
+      </div>
+    </div>
+    <div onClick="{{ openOtd }}" style="margin-top:28px;display:grid;grid-template-columns:120px 1fr auto;gap:20px;align-items:center;padding:14px;border-radius:8px;background:var(--surface);border:1px solid var(--border);cursor:pointer">
+      <img src="https://picsum.photos/seed/otd/240/160" style="width:120px;height:80px;border-radius:6px;object-fit:cover;filter:sepia(.08) saturate(.88)" alt="">
+      <div><div style="font-family:var(--font-mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent)">On this day · 2025</div><div style="font-family:var(--font-serif);font-size:26px;line-height:1.1;margin-top:4px">First real cold morning</div><div style="font-size:14px;color:var(--fg2);margin-top:4px">Sep 6, 2025 · Home · 4 photos</div></div>
+      <span style="color:var(--fg3);font-size:20px;padding-right:8px">→</span>
+    </div>
+    <div style="display:grid;grid-template-columns:120px 1fr;gap:32px;margin-top:40px">
+      <div style="position:sticky;top:40px;align-self:start;font-family:var(--font-serif);font-size:28px;line-height:1;color:var(--fg3)">2026</div>
+      <div style="display:flex;flex-direction:column;gap:40px">
+        <sc-for list="{{ months }}" as="mo" hint-placeholder-count="3">
+          <div>
+            <div style="position:sticky;top:0;z-index:2;padding:8px 0;background:color-mix(in oklab,var(--bg),transparent 12%);backdrop-filter:blur(12px);font-family:var(--font-mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--fg3);border-bottom:1px solid var(--border)">{{ mo.label }}</div>
+            <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:16px;margin-top:16px;grid-auto-rows:auto">
+              <sc-for list="{{ mo.items }}" as="m" hint-placeholder-count="2">
+                <div onClick="{{ m.open }}" style="grid-column:span {{ m.cols }};cursor:pointer;display:flex;flex-direction:{{ m.dir }};gap:14px;border-radius:8px;overflow:hidden;background:var(--surface);border:1px solid var(--border)">
+                  <div style="position:relative;flex:none;width:{{ m.imgW }};height:{{ m.imgH }}"><img src="{{ m.img }}" style="width:100%;height:100%;object-fit:cover;display:block;filter:sepia(.08) saturate(.88)" alt=""><div style="position:absolute;bottom:10px;right:10px;font-family:var(--font-mono);font-size:10px;color:#faf9f6;background:rgba(18,17,16,.55);padding:3px 6px;border-radius:4px">{{ m.count }}</div></div>
+                  <div style="padding:{{ m.pad }};display:flex;flex-direction:column;gap:6px;min-width:0">
+                    <div style="font-family:var(--font-mono);font-size:11px;letter-spacing:.08em;color:var(--fg3)">{{ m.date }} · {{ m.type }}</div>
+                    <div style="font-family:var(--font-serif);font-size:{{ m.titleSize }};line-height:1.08">{{ m.title }}</div>
+                    <div style="font-size:14px;color:var(--fg2);line-height:1.5">{{ m.ex }}</div>
+                    <div style="margin-top:auto;font-size:12px;color:var(--fg3);display:flex;gap:10px"><span style="display:inline-flex;align-items:center;gap:4px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path><circle cx="12" cy="10" r="3"></circle></svg>{{ m.loc }}</span><span>{{ m.by }}</span></div>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+<!-- DETAIL -->
+<sc-if value="{{ isDetail }}" hint-placeholder-val="{{ false }}">
+  <div style="height:440px;position:relative"><img src="{{ d.hero }}" style="width:100%;height:100%;object-fit:cover;display:block;filter:sepia(.08) saturate(.88)" alt=""><div style="position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.35),transparent 35%)"></div>
+    <button onClick="{{ goTimeline }}" style="position:absolute;top:24px;left:48px;height:36px;padding:0 12px 0 8px;border-radius:8px;border:none;background:rgba(18,17,16,.5);color:#faf9f6;font-size:13px;display:flex;align-items:center;gap:6px;cursor:pointer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"></path></svg>Memories</button>
+    <div style="position:absolute;top:24px;right:48px;display:flex;gap:8px"><button style="height:36px;padding:0 14px;border-radius:8px;border:none;background:rgba(18,17,16,.5);color:#faf9f6;font-size:13px;cursor:pointer">Edit</button><button style="height:36px;padding:0 14px;border-radius:8px;border:none;background:rgba(18,17,16,.5);color:#faf9f6;font-size:13px;cursor:pointer">Add to album</button></div>
+  </div>
+  <div style="max-width:1120px;margin:0 auto;padding:40px 48px 80px;display:grid;grid-template-columns:680px 1fr;gap:64px">
+    <div>
+      <div style="font-family:var(--font-mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent)">{{ d.type }}</div>
+      <div style="font-family:var(--font-serif);font-size:56px;line-height:1;margin-top:10px">{{ d.title }}</div>
+      <div style="display:flex;gap:14px;margin-top:16px;font-size:14px;color:var(--fg2);align-items:center"><span style="font-family:var(--font-mono);font-size:12px">{{ d.date }}</span><span>·</span><span>{{ d.loc }}</span><span>·</span><span>{{ d.by }} · added 3 days ago</span></div>
+      <div style="margin-top:40px;display:flex;align-items:baseline;gap:12px"><span style="font-family:var(--font-serif);font-style:italic;font-size:26px">Casey's take</span><span style="flex:1;border-top:1px solid var(--border)"></span></div>
+      <p style="margin:18px 0 0;font-size:17px;line-height:1.65">{{ d.take1a }}</p>
+      <blockquote style="margin:24px 0;padding:0 0 0 20px;border-left:1px solid var(--accent);font-family:var(--font-serif);font-size:28px;line-height:1.25">{{ d.quote }}</blockquote>
+      <p style="margin:0;font-size:17px;line-height:1.65">{{ d.take1b }}</p>
+      <img src="{{ d.inline }}" style="width:100%;height:380px;object-fit:cover;border-radius:8px;margin-top:24px;filter:sepia(.08) saturate(.88)" alt=""><div style="font-family:var(--font-mono);font-size:12px;color:var(--fg3);margin-top:8px">{{ d.inlineCap }}</div>
+      <div style="margin-top:48px;display:flex;align-items:baseline;gap:12px"><span style="font-family:var(--font-serif);font-style:italic;font-size:26px">{{ her }}'s take</span><span style="flex:1;border-top:1px solid var(--border)"></span></div>
+      <p style="margin:18px 0 0;font-size:17px;line-height:1.65">{{ d.take2 }}</p>
+      <div style="margin-top:36px;display:flex;gap:8px"><sc-for list="{{ reactions }}" as="r" hint-placeholder-count="4"><button onClick="{{ r.pick }}" style="height:34px;padding:0 12px;border-radius:4px;border:1px solid {{ r.border }};background:{{ r.bg }};color:var(--fg1);font-size:14px;cursor:pointer;display:flex;gap:6px;align-items:center;font-family:var(--font-serif);font-style:italic">{{ r.label }}<span style="font-family:var(--font-mono);font-style:normal;font-size:11px;color:var(--fg3)">{{ r.n }}</span></button></sc-for></div>
+      <div style="margin-top:28px;padding-top:24px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:16px">
+        <div style="display:flex;gap:12px"><span style="width:28px;height:28px;border-radius:999px;background:var(--green-soft);color:var(--green);display:inline-flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:10px;flex:none">{{ herIni }}</span><div><div style="font-size:15px">You left out the part where you fell in the creek.</div><div style="font-size:11px;color:var(--fg3);font-family:var(--font-mono);margin-top:3px">{{ her }} · Aug 18</div></div></div>
+        <div style="display:flex;gap:12px"><span style="width:28px;height:28px;border-radius:999px;background:var(--accent-soft);color:var(--accent);display:inline-flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:10px;flex:none">C</span><div><div style="font-size:15px">Artistic license.</div><div style="font-size:11px;color:var(--fg3);font-family:var(--font-mono);margin-top:3px">Casey · Aug 18</div></div></div>
+        <input placeholder="Say something…" style="height:44px;border-radius:8px;border:1px solid var(--border);background:var(--surface);padding:0 14px;color:var(--fg1);font-size:14px">
+      </div>
+    </div>
+    <div style="position:sticky;top:24px;align-self:start;display:flex;flex-direction:column;gap:8px">
+      <div style="display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--fg3);padding-bottom:8px"><span>Media</span><span>{{ d.count }}</span></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+        <sc-for list="{{ d.gallery }}" as="g" hint-placeholder-count="6">
+          <div style="position:relative;aspect-ratio:1;border-radius:6px;overflow:hidden;grid-column:span {{ g.span }};cursor:pointer"><img src="{{ g.src }}" style="width:100%;height:100%;object-fit:cover;display:block;filter:sepia(.08) saturate(.88)" alt=""><sc-if value="{{ g.video }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;right:8px;bottom:8px;font-family:var(--font-mono);font-size:10px;color:#faf9f6;background:rgba(18,17,16,.6);padding:2px 6px;border-radius:4px">▶ {{ g.dur }}</div></sc-if></div>
+        </sc-for>
+      </div>
+      <div style="font-size:12px;color:var(--fg3);margin-top:4px">Click any tile to open the lightbox</div>
+    </div>
+  </div>
+</sc-if>
+
+<!-- COMPOSER -->
+<sc-if value="{{ isComposer }}" hint-placeholder-val="{{ false }}">
+  <div style="display:flex;justify-content:space-between;align-items:center;padding:20px 48px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg);z-index:3">
+    <div style="display:flex;align-items:center;gap:16px"><button onClick="{{ goTimeline }}" style="height:36px;padding:0 12px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--fg1);font-size:13px;cursor:pointer">← Back</button><span style="font-family:var(--font-mono);font-size:12px;color:var(--fg3)">Draft · Saved just now</span></div>
+    <div style="display:flex;align-items:center;gap:20px">
+      <div onClick="{{ togglePrivate }}" style="display:flex;align-items:center;gap:10px;font-size:14px;color:var(--fg2);cursor:pointer">Keep private to me until I publish<span style="width:40px;height:24px;border-radius:999px;background:{{ privBg }};position:relative;transition:background 150ms"><span style="position:absolute;top:3px;left:{{ privKnob }};width:18px;height:18px;border-radius:999px;background:#faf9f6;transition:left 150ms"></span></span></div>
+      <button style="height:36px;padding:0 16px;border-radius:8px;border:none;background:var(--accent);color:#faf9f6;font-size:14px;font-weight:500;cursor:pointer">Publish</button>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 400px;gap:48px;padding:40px 48px 80px;max-width:1200px;margin:0 auto">
+    <div style="display:flex;flex-direction:column;gap:20px">
+      <input value="{{ cTitle }}" onChange="{{ onTitle }}" placeholder="Give it a title" style="height:64px;border:none;border-bottom:1px solid var(--border);background:transparent;font-family:var(--font-serif);font-size:48px;color:var(--fg1);padding:0;border-radius:0;width:100%">
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <span style="height:34px;padding:0 12px;border-radius:4px;border:1px solid var(--border);display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--fg1)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2v4"></path><path d="M16 2v4"></path><rect width="18" height="18" x="3" y="4" rx="2"></rect><path d="M3 10h18"></path></svg>Sep 4 – 6, 2026</span>
+        <span style="height:34px;padding:0 12px;border-radius:4px;border:1px solid var(--border);display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--fg1)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path><circle cx="12" cy="10" r="3"></circle></svg>Lake Lure, NC</span>
+        <sc-for list="{{ types }}" as="t" hint-placeholder-count="4"><button onClick="{{ t.pick }}" style="height:34px;padding:0 12px;border-radius:4px;border:1px solid {{ t.border }};background:{{ t.bg }};color:var(--fg1);font-size:13px;cursor:pointer">{{ t.label }}</button></sc-for>
+        <span style="height:34px;padding:0 12px;border-radius:4px;border:1px dashed var(--border);display:inline-flex;align-items:center;font-size:13px;color:var(--fg3)">+ tag</span>
+      </div>
+      <div style="display:flex;gap:2px;padding:6px;border-radius:8px;background:var(--surface);border:1px solid var(--border);width:fit-content;font-size:13px;color:var(--fg2)">
+        <sc-for list="{{ tools }}" as="t" hint-placeholder-count="8"><span style="height:30px;min-width:30px;padding:0 10px;border-radius:4px;display:inline-flex;align-items:center;justify-content:center;font-family:{{ t.font }};font-weight:{{ t.weight }};font-style:{{ t.style }}">{{ t.label }}</span></sc-for>
+      </div>
+      <div style="font-size:17px;line-height:1.7;display:flex;flex-direction:column;gap:18px;max-width:680px">
+        <div style="font-family:var(--font-serif);font-size:28px;line-height:1.2">Friday, late</div>
+        <p style="margin:0">We got there after dark, which was the plan, but the cabin key was not where the email said it would be. Twenty minutes with phone flashlights. It was under the <strong>third</strong> rock, not the second. Of course it was.</p>
+        <blockquote style="margin:0;padding:0 0 0 20px;border-left:1px solid var(--accent);font-family:var(--font-serif);font-size:26px;line-height:1.3">The lake was just a sound until morning.</blockquote>
+        <div style="position:relative;border-radius:8px;overflow:hidden;border:1px solid var(--accent)"><img src="https://picsum.photos/seed/lake1/900/500" style="width:100%;height:300px;object-fit:cover;display:block;filter:sepia(.08) saturate(.88)" alt=""><input value="First light from the dock. Cold." style="position:absolute;left:0;right:0;bottom:0;height:40px;border:none;background:rgba(18,17,16,.7);color:#faf9f6;padding:0 14px;font-size:13px;font-family:var(--font-mono)"></div>
+        <ul style="margin:0;padding-left:22px;display:flex;flex-direction:column;gap:6px"><li>Coffee from the gas station, somehow great</li><li>{{ her }} swam. I supervised.</li><li>Zero photos of the trout because there was no trout</li></ul>
+        <p style="margin:0;color:var(--fg3)">Keep writing…</p>
+      </div>
+    </div>
+    <div style="position:sticky;top:100px;align-self:start;display:flex;flex-direction:column;gap:14px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-family:var(--font-mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--fg3)">Media · 7</span><span style="font-size:12px;color:var(--fg3)">Drag to reorder</span></div>
+      <div style="border:1px dashed var(--border);border-radius:8px;padding:24px;text-align:center;color:var(--fg2);font-size:14px;background:var(--surface)">Drop photos or videos here<div style="font-size:12px;color:var(--fg3);margin-top:4px">or click to browse</div></div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+        <sc-for list="{{ tray }}" as="t" hint-placeholder-count="7">
+          <div style="position:relative;aspect-ratio:1;border-radius:6px;overflow:hidden;border:1px solid {{ t.border }};cursor:grab">
+            <img src="{{ t.src }}" style="width:100%;height:100%;object-fit:cover;display:block;filter:sepia(.08) saturate(.88);opacity:{{ t.op }}" alt="">
+            <sc-if value="{{ t.cover }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;top:6px;left:6px;font-family:var(--font-mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#faf9f6;background:var(--accent);padding:3px 6px;border-radius:3px">Cover</div></sc-if>
+            <sc-if value="{{ t.uploading }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;left:0;right:0;bottom:0;height:3px;background:rgba(18,17,16,.5)"><div style="width:{{ t.pct }};height:100%;background:var(--accent)"></div></div><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:11px;color:#faf9f6">{{ t.pct }}</div></sc-if>
+            <sc-if value="{{ t.hasCap }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;left:0;right:0;bottom:0;padding:4px 6px;font-size:10px;color:#faf9f6;background:rgba(18,17,16,.6);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ t.cap }}</div></sc-if>
+          </div>
+        </sc-for>
+      </div>
+      <div style="font-size:12px;color:var(--fg3);line-height:1.5">Hover a tile: set cover, caption, remove. Drag a tile into the text to insert it inline.</div>
+    </div>
+  </div>
+</sc-if>
+
+<!-- CHAT -->
+<sc-if value="{{ isChat }}" hint-placeholder-val="{{ false }}">
+  <div style="display:grid;grid-template-columns:1fr 340px;height:960px">
+    <div style="display:flex;flex-direction:column;border-right:1px solid var(--border);min-width:0">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:20px 32px;border-bottom:1px solid var(--border)">
+        <div style="display:flex;align-items:center;gap:12px"><img src="https://picsum.photos/seed/herav/80/80" style="width:40px;height:40px;border-radius:999px;object-fit:cover;filter:sepia(.2) saturate(.6)" alt=""><div><div style="font-family:var(--font-serif);font-size:26px;line-height:1">{{ her }}</div><div style="font-size:12px;color:var(--green);margin-top:2px">Active now</div></div></div>
+        <div style="display:flex;align-items:center;gap:8px;height:36px;padding:0 12px;border:1px solid var(--border);border-radius:6px;color:var(--fg3);font-size:13px;width:240px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>Search this conversation</div>
+      </div>
+      <div style="flex:1;overflow:auto;padding:24px 32px;display:flex;flex-direction:column;gap:12px">
+        <div style="text-align:center;font-family:var(--font-mono);font-size:11px;letter-spacing:.1em;color:var(--fg3);text-transform:uppercase">Yesterday</div>
+        <div style="align-self:flex-start;max-width:60%;padding:10px 14px;border-radius:12px;background:var(--surface);border:1px solid var(--border)">Gate code is 4471, garage is the birthday</div>
+        <div style="text-align:center;font-family:var(--font-mono);font-size:11px;letter-spacing:.1em;color:var(--fg3);text-transform:uppercase;margin-top:12px">Today</div>
+        <sc-for list="{{ msgs }}" as="m" hint-placeholder-count="7">
+          <div style="display:flex;flex-direction:column;align-self:{{ m.self }};max-width:60%;gap:4px;align-items:{{ m.items }}">
+            <sc-if value="{{ m.isText }}" hint-placeholder-val="{{ true }}"><div style="padding:10px 14px;border-radius:12px;background:{{ m.bg }};border:1px solid var(--border);font-size:15px;line-height:1.45">{{ m.text }}</div></sc-if>
+            <sc-if value="{{ m.isPhoto }}" hint-placeholder-val="{{ false }}"><div style="position:relative"><img src="{{ m.img }}" style="width:320px;height:240px;object-fit:cover;border-radius:12px;display:block;filter:sepia(.08) saturate(.88)" alt=""><button style="position:absolute;bottom:10px;right:10px;height:28px;padding:0 10px;border-radius:6px;border:none;background:rgba(18,17,16,.65);color:#faf9f6;font-size:12px;cursor:pointer">Save to memories</button></div></sc-if>
+            <sc-if value="{{ m.isPhotos }}" hint-placeholder-val="{{ false }}"><div style="display:grid;grid-template-columns:1fr 1fr;gap:3px;width:320px;border-radius:12px;overflow:hidden"><sc-for list="{{ m.imgs }}" as="p" hint-placeholder-count="4"><img src="{{ p.src }}" style="width:100%;aspect-ratio:4/3;object-fit:cover;display:block;filter:sepia(.08) saturate(.88)" alt=""></sc-for></div></sc-if>
+            <sc-if value="{{ m.isVoice }}" hint-placeholder-val="{{ false }}"><div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:12px;background:{{ m.bg }};border:1px solid var(--border);width:300px"><span style="width:28px;height:28px;border-radius:999px;background:var(--fg1);color:var(--bg);display:flex;align-items:center;justify-content:center;flex:none"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 3 20 12 6 21 6 3"></polygon></svg></span><div style="flex:1;display:flex;align-items:center;gap:2px;height:24px"><sc-for list="{{ wave }}" as="w" hint-placeholder-count="30"><span style="flex:1;height:{{ w.h }};background:{{ w.c }};border-radius:1px"></span></sc-for></div><span style="font-family:var(--font-mono);font-size:11px;color:var(--fg2)">{{ m.dur }}</span></div></sc-if>
+            <sc-if value="{{ m.isMemory }}" hint-placeholder-val="{{ false }}"><div onClick="{{ m.openMem }}" style="width:320px;border-radius:12px;overflow:hidden;border:1px solid var(--border);background:var(--surface);cursor:pointer;display:grid;grid-template-columns:120px 1fr"><img src="{{ m.img }}" style="width:100%;height:100%;object-fit:cover;display:block;filter:sepia(.08) saturate(.88)" alt=""><div style="padding:12px 14px"><div style="font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent)">Memory</div><div style="font-family:var(--font-serif);font-size:20px;line-height:1.1;margin-top:4px">{{ m.title }}</div><div style="font-size:12px;color:var(--fg3);margin-top:4px">{{ m.sub }}</div></div></div></sc-if>
+            <sc-if value="{{ m.isPlanItem }}" hint-placeholder-val="{{ false }}"><div onClick="{{ m.openPlan }}" style="width:320px;border-radius:12px;border:1px solid var(--border);border-left:2px solid var(--accent);background:var(--surface);cursor:pointer;padding:12px 14px;display:flex;flex-direction:column;gap:4px"><div style="font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent)">Plan item · {{ m.kind }}</div><div style="font-family:var(--font-serif);font-size:20px;line-height:1.1">{{ m.title }}</div><div style="font-size:12px;color:var(--fg3)">{{ m.sub }}</div><div style="display:flex;gap:8px;margin-top:6px"><button style="height:28px;padding:0 10px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--fg1);font-size:12px;cursor:pointer">Open in plan</button><button style="height:28px;padding:0 10px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--fg1);font-size:12px;cursor:pointer">Put it on a day</button></div></div></sc-if>
+            <sc-if value="{{ m.isLink }}" hint-placeholder-val="{{ false }}"><div style="width:320px;border-radius:12px;overflow:hidden;border:1px solid var(--border);background:{{ m.bg }}"><div style="padding:10px 14px;color:var(--accent)">{{ m.url }}</div><div style="border-top:1px solid var(--border);padding:10px 14px;display:flex;gap:10px;align-items:center"><span style="width:40px;height:40px;border-radius:6px;background:var(--surface-2);flex:none"></span><div style="min-width:0"><div style="font-size:14px;font-weight:500">{{ m.title }}</div><div style="font-size:12px;color:var(--fg3)">{{ m.domain }}</div></div></div></div></sc-if>
+            <div style="font-family:var(--font-mono);font-size:10px;color:var(--fg3);padding:0 4px">{{ m.meta }}</div>
+          </div>
+        </sc-for>
+        <sc-if value="{{ typing }}" hint-placeholder-val="{{ false }}"><div style="align-self:flex-start;padding:10px 14px;border-radius:12px;background:var(--surface);border:1px solid var(--border);font-size:14px;color:var(--fg3);font-style:italic;font-family:var(--font-serif)">{{ her }} is typing…</div></sc-if>
+      </div>
+      <div style="padding:16px 32px 24px;border-top:1px solid var(--border);display:flex;gap:10px;align-items:center">
+        <button style="width:40px;height:40px;border:none;background:transparent;color:var(--fg2);display:flex;align-items:center;justify-content:center;cursor:pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"></path><circle cx="12" cy="13" r="3"></circle></svg></button>
+        <input value="{{ draft }}" onChange="{{ onDraft }}" onKeyDown="{{ onDraftKey }}" placeholder="Message {{ her }}" style="flex:1;height:44px;border-radius:8px;border:1px solid var(--border);background:var(--surface);padding:0 14px;color:var(--fg1);font-size:15px">
+        <button onClick="{{ send }}" style="height:44px;padding:0 16px;border-radius:8px;border:none;background:{{ sendBg }};color:{{ sendFg }};font-size:14px;font-weight:500;cursor:pointer">Send</button>
+      </div>
+    </div>
+    <div style="padding:24px;display:flex;flex-direction:column;gap:28px;overflow:auto;background:var(--surface)">
+      <div><div style="font-family:var(--font-mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--fg3);margin-bottom:12px">Pinned · 2</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div style="padding:12px 14px;border-radius:8px;background:var(--bg);border:1px solid var(--border);font-size:14px;line-height:1.45">Gate code is 4471, garage is the birthday<div style="font-family:var(--font-mono);font-size:10px;color:var(--fg3);margin-top:6px">{{ her }} · Aug 3</div></div>
+          <div style="padding:12px 14px;border-radius:8px;background:var(--bg);border:1px solid var(--border);font-size:14px;line-height:1.45">Vet: Dr. Okafor, (828) 555-0142<div style="font-family:var(--font-mono);font-size:10px;color:var(--fg3);margin-top:6px">Casey · Jun 19</div></div>
+        </div>
+      </div>
+      <div><div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px"><span style="font-family:var(--font-mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--fg3)">Media in this chat</span><a style="font-size:12px">All →</a></div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px"><sc-for list="{{ chatMedia }}" as="c" hint-placeholder-count="9"><img src="{{ c.src }}" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:4px;display:block;filter:sepia(.08) saturate(.88)" alt=""></sc-for></div>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+<!-- CALENDAR -->
+<sc-if value="{{ isCalendar }}" hint-placeholder-val="{{ false }}">
+  <div style="padding:40px 48px 48px;display:flex;flex-direction:column;gap:24px;height:960px">
+    <div style="display:flex;align-items:flex-end;justify-content:space-between">
+      <div style="display:flex;align-items:flex-end;gap:20px"><div><div style="font-family:var(--font-mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--fg3)">2026</div><div style="font-family:var(--font-serif);font-size:56px;line-height:1">September</div></div><div style="display:flex;gap:4px;padding-bottom:6px"><button style="width:32px;height:32px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--fg2);cursor:pointer">‹</button><button style="width:32px;height:32px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--fg2);cursor:pointer">›</button></div></div>
+      <div style="display:flex;gap:16px;align-items:center">
+        <div style="display:flex;align-items:center;gap:10px;height:40px;padding:0 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--fg3);font-size:14px;width:320px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>Dinner at Nonna's Fri 7pm</div>
+        <div style="display:flex;gap:2px;padding:2px;border-radius:6px;background:var(--surface-2);font-size:13px"><button onClick="{{ setMonth }}" style="height:32px;padding:0 14px;border-radius:4px;border:none;background:{{ monthBg }};color:var(--fg1);cursor:pointer">Month</button><button onClick="{{ setWeek }}" style="height:32px;padding:0 14px;border-radius:4px;border:none;background:{{ weekBg }};color:var(--fg1);cursor:pointer">Week</button></div>
+      </div>
+    </div>
+    <sc-if value="{{ isMonth }}" hint-placeholder-val="{{ true }}">
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;color:var(--fg3);text-transform:uppercase;padding:0 0 8px;border-bottom:1px solid var(--border)"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span></div>
+      <div style="flex:1;display:grid;grid-template-columns:repeat(7,1fr);grid-auto-rows:1fr;border-left:1px solid var(--border);border-top:1px solid var(--border)">
+        <sc-for list="{{ days }}" as="d" hint-placeholder-count="35">
+          <div style="border-right:1px solid var(--border);border-bottom:1px solid var(--border);padding:8px;display:flex;flex-direction:column;gap:4px;min-height:0">
+            <span style="width:26px;height:26px;border-radius:999px;display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:12px;color:{{ d.color }};background:{{ d.todayBg }}">{{ d.n }}</span>
+            <sc-for list="{{ d.events }}" as="e" hint-placeholder-count="0"><div style="display:flex;align-items:center;gap:6px;font-size:12px;padding:3px 6px;border-radius:4px;background:{{ e.bg }};color:var(--fg1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><span style="width:6px;height:6px;border-radius:999px;background:{{ e.dot }};flex:none"></span>{{ e.title }}</div></sc-for>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if>
+    <sc-if value="{{ isWeek }}" hint-placeholder-val="{{ false }}">
+      <div style="flex:1;display:grid;grid-template-columns:56px repeat(7,1fr);border-top:1px solid var(--border);min-height:0;overflow:hidden">
+        <div></div>
+        <sc-for list="{{ weekDays }}" as="w" hint-placeholder-count="7"><div style="padding:10px 8px;border-left:1px solid var(--border);display:flex;flex-direction:column;gap:2px"><span style="font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--fg3)">{{ w.dow }}</span><span style="font-family:var(--font-serif);font-size:24px;line-height:1;color:{{ w.color }}">{{ w.n }}</span></div></sc-for>
+        <div style="grid-column:1 / -1;display:grid;grid-template-columns:56px repeat(7,1fr);position:relative;height:100%;overflow:hidden">
+          <div style="display:flex;flex-direction:column"><sc-for list="{{ hours }}" as="h" hint-placeholder-count="12"><div style="height:56px;font-family:var(--font-mono);font-size:10px;color:var(--fg3);padding:0 8px;text-align:right;border-top:1px solid var(--border);margin-top:-1px;line-height:1">{{ h.label }}</div></sc-for></div>
+          <sc-for list="{{ weekCols }}" as="c" hint-placeholder-count="7"><div style="position:relative;border-left:1px solid var(--border);background-image:repeating-linear-gradient(to bottom,var(--border) 0 1px,transparent 1px 56px)"><sc-for list="{{ c.events }}" as="e" hint-placeholder-count="0"><div style="position:absolute;left:4px;right:4px;top:{{ e.top }};height:{{ e.h }};border-radius:6px;background:{{ e.bg }};border-left:1px solid {{ e.dot }};padding:6px 8px;font-size:12px;line-height:1.3;overflow:hidden"><div style="font-weight:500">{{ e.title }}</div><div style="font-family:var(--font-mono);font-size:10px;color:var(--fg2)">{{ e.time }}</div></div></sc-for></div></sc-for>
+        </div>
+      </div>
+    </sc-if>
+    <div style="display:flex;gap:20px;font-size:12px;color:var(--fg3);font-family:var(--font-mono)"><span style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:999px;background:var(--accent)"></span>Casey</span><span style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:999px;background:var(--green)"></span>{{ her }}</span><span style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:999px;background:var(--fg1)"></span>Both</span></div>
+  </div>
+</sc-if>
+
+<!-- PLAN DETAIL · three-column itinerary -->
+<sc-if value="{{ isPlan }}" hint-placeholder-val="{{ false }}">
+  <div style="display:flex;flex-direction:column;height:960px">
+    <div style="position:relative;height:200px;flex:none"><img src="{{ plan.cover }}" style="width:100%;height:100%;object-fit:cover;display:block;filter:sepia(.08) saturate(.88)" alt=""><div style="position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.25),rgba(18,17,16,.75))"></div>
+      <div style="position:absolute;left:40px;right:40px;bottom:20px;display:flex;justify-content:space-between;align-items:flex-end;color:#faf9f6">
+        <div><div style="display:flex;align-items:center;gap:10px"><span style="font-family:var(--font-mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;border:1px solid rgba(250,249,246,.5);padding:3px 7px;border-radius:4px">{{ plan.status }}</span><span style="font-family:var(--font-mono);font-size:12px">{{ plan.countdown }}</span></div><div style="font-family:var(--font-serif);font-size:48px;line-height:1;margin-top:8px">{{ plan.name }}</div><div style="display:flex;gap:14px;margin-top:8px;font-size:13px;color:#a8a49a"><span style="font-family:var(--font-mono)">{{ plan.dates }}</span><span>Tokyo · Kyoto · Osaka</span></div></div>
+        <div style="display:flex;gap:8px;align-items:center"><span style="font-size:12px;color:#a8a49a">Available offline · saved 2h ago</span><span style="width:36px;height:22px;border-radius:999px;background:var(--accent);position:relative"><span style="position:absolute;top:3px;left:17px;width:16px;height:16px;border-radius:999px;background:#faf9f6"></span></span><button style="width:36px;height:36px;border-radius:8px;border:none;background:rgba(250,249,246,.15);color:#faf9f6;cursor:pointer;margin-left:8px">···</button></div>
+      </div>
+    </div>
+    <div style="display:flex;gap:4px;padding:0 40px;border-bottom:1px solid var(--border);flex:none">
+      <sc-for list="{{ dSegs }}" as="sg" hint-placeholder-count="8"><button onClick="{{ sg.pick }}" style="height:44px;padding:0 14px;border:none;border-bottom:2px solid {{ sg.edge }};background:transparent;color:{{ sg.color }};font-size:14px;font-weight:500;cursor:pointer;margin-bottom:-1px">{{ sg.label }}</button></sc-for>
+    </div>
+    <!-- Overview -->
+    <sc-if value="{{ ptOverview }}" hint-placeholder-val="{{ false }}">
+      <div style="flex:1;overflow:auto;padding:32px 40px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;align-content:start">
+        <div style="grid-column:span 2;display:flex;align-items:baseline;gap:16px"><span style="font-family:var(--font-serif);font-size:96px;line-height:1">214</span><span style="font-size:18px;color:var(--fg2)">days until we land in Tokyo</span></div>
+        <div onClick="{{ ptToLocked }}" style="position:relative;border-radius:8px;border:1px solid var(--border);background:var(--surface);padding:16px;overflow:hidden;cursor:pointer"><div style="filter:blur(5px);font-family:var(--font-mono);font-size:12px;color:var(--fg2);line-height:1.7;user-select:none">Passport C · 5X8 221 904<br>Passport Y · 7K1 088 435<br>Embassy +81 3-3224-5000</div><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:8px;font-size:13px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>Locked note</div></div>
+        <div style="border-radius:8px;border:1px solid var(--border);background:var(--surface);padding:18px 20px;display:flex;flex-direction:column;gap:6px"><div style="font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--fg3)">Next up · flight</div><div style="font-family:var(--font-serif);font-size:28px;line-height:1.1">JL 5 · JFK → HND</div><div style="font-size:13px;color:var(--fg2)">Thu Apr 8 · 12:55 PM · Terminal 1</div><div style="font-family:var(--font-mono);font-size:18px;letter-spacing:.12em;margin-top:8px">Q7XR4M</div></div>
+        <div onClick="{{ ptToBookings }}" style="border-radius:8px;border:1px solid var(--border);padding:18px 20px;display:flex;flex-direction:column;gap:12px;cursor:pointer"><div style="font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--fg3)">Key bookings</div><div style="display:flex;justify-content:space-between;font-size:14px"><span>Flights</span><span style="color:var(--fg2)">2 booked</span></div><div style="display:flex;justify-content:space-between;font-size:14px"><span>Stays</span><span style="color:var(--fg2)">2 of 3</span></div><div style="display:flex;justify-content:space-between;font-size:14px"><span>Transport</span><span style="color:var(--fg2)">JR Pass · seats at station</span></div></div>
+        <div onClick="{{ ptToBudget }}" style="border-radius:8px;border:1px solid var(--border);padding:18px 20px;display:flex;flex-direction:column;gap:10px;cursor:pointer"><div style="font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--fg3)">Budget</div><div style="display:flex;flex-direction:column;gap:4px;font-family:var(--font-mono);font-size:12px;color:var(--fg2)"><span style="display:flex;justify-content:space-between;white-space:nowrap"><span>paid</span><span style="color:var(--fg1)">$3,860</span></span><span style="display:flex;justify-content:space-between;white-space:nowrap"><span>committed</span><span style="color:var(--fg1)">$5,120</span></span><span style="display:flex;justify-content:space-between;white-space:nowrap"><span>planned</span><span style="color:var(--fg1)">$9,400</span></span></div><div style="height:6px;border-radius:3px;background:var(--surface-2);position:relative;overflow:hidden"><div style="position:absolute;left:0;top:0;bottom:0;width:54%;background:var(--accent-soft)"></div><div style="position:absolute;left:0;top:0;bottom:0;width:41%;background:var(--accent)"></div></div></div>
+        <div style="grid-column:span 2;display:grid;grid-template-columns:repeat(3,1fr);gap:12px"><sc-for list="{{ rings }}" as="r" hint-placeholder-count="3"><div onClick="{{ ptToLists }}" style="display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:8px;border:1px solid var(--border);cursor:pointer"><span style="width:48px;height:48px;border-radius:999px;background:conic-gradient(var(--accent) {{ r.pct }}, var(--surface-2) 0);display:flex;align-items:center;justify-content:center;flex:none"><span style="width:38px;height:38px;border-radius:999px;background:var(--bg);display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:10px">{{ r.n }}</span></span><span style="font-size:13px;color:var(--fg2)">{{ r.name }}</span></div></sc-for></div>
+        <div onClick="{{ ptToIdeas }}" style="border-radius:8px;border:1px solid var(--border);padding:18px 20px;cursor:pointer"><div style="display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--fg3)"><span>Newest ideas</span><span>All 12 →</span></div><div style="display:flex;flex-direction:column;margin-top:8px"><sc-for list="{{ newestIdeas }}" as="i" hint-placeholder-count="3"><div style="display:flex;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--border)"><img src="{{ i.img }}" style="width:36px;height:36px;border-radius:5px;object-fit:cover;filter:sepia(.08) saturate(.88)" alt=""><div style="min-width:0"><div style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ i.title }}</div><div style="font-size:11px;color:var(--fg3)">{{ i.city }} · {{ i.by }}</div></div></div></sc-for></div></div>
+      </div>
+    </sc-if>
+    <!-- Ideas -->
+    <sc-if value="{{ ptIdeas }}" hint-placeholder-val="{{ false }}">
+      <div style="flex:1;overflow:auto;padding:24px 40px;display:flex;flex-direction:column;gap:16px">
+        <div style="display:flex;gap:6px"><sc-for list="{{ ideaFilters }}" as="f" hint-placeholder-count="6"><button onClick="{{ f.pick }}" style="height:30px;padding:0 12px;border-radius:4px;border:1px solid {{ f.border }};background:{{ f.bg }};color:{{ f.color }};font-size:13px;cursor:pointer">{{ f.label }}</button></sc-for><span style="flex:1"></span><div style="display:flex;align-items:center;gap:8px;height:30px;padding:0 12px;border:1px dashed var(--border);border-radius:4px;color:var(--fg3);font-size:13px;width:320px">Paste a link to add an idea…</div></div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px"><sc-for list="{{ ideasF }}" as="i" hint-placeholder-count="6"><div style="border-radius:8px;overflow:hidden;border:1px solid var(--border);background:var(--surface);display:flex;flex-direction:column;cursor:grab"><img src="{{ i.img }}" style="width:100%;height:130px;object-fit:cover;display:block;filter:sepia(.08) saturate(.88)" alt=""><div style="padding:12px 14px 14px;display:flex;flex-direction:column;gap:6px;flex:1"><div style="font-size:14px;font-weight:500;line-height:1.3">{{ i.title }}</div><div style="font-size:12px;color:var(--fg3)">{{ i.city }} · added by {{ i.by }}</div><div style="display:flex;justify-content:space-between;align-items:center;margin-top:auto"><span style="display:flex;gap:4px"><span style="width:22px;height:22px;border-radius:999px;background:var(--accent-soft);color:var(--accent);display:inline-flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:9px">{{ i.cv }}</span><span style="width:22px;height:22px;border-radius:999px;background:var(--green-soft);color:var(--green);display:inline-flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:9px">{{ i.hv }}</span></span><span style="font-family:var(--font-mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:{{ i.stColor }};border:1px solid {{ i.stColor }};padding:2px 5px;border-radius:3px">{{ i.status }}</span></div></div></div></sc-for></div>
+      </div>
+    </sc-if>
+    <!-- Bookings -->
+    <sc-if value="{{ ptBookings }}" hint-placeholder-val="{{ false }}">
+      <div style="flex:1;overflow:auto;padding:24px 40px;display:grid;grid-template-columns:1fr 1fr;gap:16px;align-content:start">
+        <sc-for list="{{ bookings }}" as="b" hint-placeholder-count="4"><div style="display:flex;flex-direction:column;gap:8px"><div style="font-family:var(--font-mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--fg3)">{{ b.group }}</div><div style="border-radius:8px;border:1px solid var(--border);background:var(--surface);padding:18px 20px;display:flex;flex-direction:column;gap:12px"><div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:16px;font-weight:500">{{ b.title }}</span><span style="font-size:12px;color:var(--fg3)">{{ b.sub }}</span></div><sc-if value="{{ b.isRoute }}" hint-placeholder-val="{{ false }}"><div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px"><div><div style="font-family:var(--font-serif);font-size:38px;line-height:1">{{ b.a }}</div><div style="font-size:12px;color:var(--fg2);margin-top:4px">{{ b.dep }}</div></div><span style="color:var(--fg3)">→</span><div style="text-align:right"><div style="font-family:var(--font-serif);font-size:38px;line-height:1">{{ b.b }}</div><div style="font-size:12px;color:var(--fg2);margin-top:4px">{{ b.arr }}</div></div></div></sc-if><sc-if value="{{ b.isStay }}" hint-placeholder-val="{{ false }}"><div style="font-size:13px;color:var(--fg2)">{{ b.addr }}</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px"><div>{{ b.dep }}</div><div>{{ b.arr }}</div></div></sc-if><sc-if value="{{ b.isTicket }}" hint-placeholder-val="{{ false }}"><div style="font-size:13px;color:var(--fg2)">{{ b.dep }} · {{ b.a }}</div></sc-if><div style="font-size:13px;color:var(--fg2)">{{ b.seats }}</div><div style="display:flex;justify-content:space-between;align-items:center;padding-top:10px;border-top:1px solid var(--border)"><div><div style="font-family:var(--font-mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--fg3)">Confirmation</div><div style="font-family:var(--font-mono);font-size:20px;letter-spacing:.14em;margin-top:2px">{{ b.conf }}</div></div><div style="display:flex;gap:8px"><sc-for list="{{ b.thumbs }}" as="t" hint-placeholder-count="1"><span style="width:28px;height:36px;border-radius:3px;background:var(--surface-2);border:1px solid var(--border)"></span></sc-for><button style="height:32px;padding:0 10px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--fg1);font-size:12px;cursor:pointer;white-space:nowrap">Open in Maps</button></div></div></div></div></sc-for>
+      </div>
+    </sc-if>
+    <!-- Checklists -->
+    <sc-if value="{{ ptLists }}" hint-placeholder-val="{{ false }}">
+      <div style="flex:1;overflow:auto;padding:24px 40px;display:grid;grid-template-columns:repeat(3,1fr);gap:24px;align-content:start">
+        <sc-for list="{{ lists }}" as="l" hint-placeholder-count="3"><div style="display:flex;flex-direction:column;gap:6px"><div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-family:var(--font-serif);font-size:24px">{{ l.name }}</span><span style="font-family:var(--font-mono);font-size:11px;color:var(--fg3);white-space:nowrap">{{ l.done }} / {{ l.total }}</span></div><div style="height:3px;border-radius:2px;background:var(--surface-2);overflow:hidden"><div style="height:100%;width:{{ l.pct }};background:var(--accent)"></div></div><sc-for list="{{ l.items }}" as="li" hint-placeholder-count="2"><div onClick="{{ li.toggle }}" style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);cursor:pointer;font-size:14px"><span style="width:20px;height:20px;border-radius:4px;border:1px solid {{ li.border }};background:{{ li.bg }};display:inline-flex;align-items:center;justify-content:center;color:#faf9f6;flex:none"><sc-if value="{{ li.done }}" hint-placeholder-val="{{ false }}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg></sc-if></span><span style="flex:1;color:{{ li.color }};text-decoration:{{ li.deco }}">{{ li.t }}</span><span style="font-family:var(--font-mono);font-size:11px;color:var(--fg3)">{{ li.due }}</span><span style="width:20px;height:20px;border-radius:999px;background:{{ li.whoBg }};color:{{ li.whoFg }};display:inline-flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:9px">{{ li.who }}</span></div></sc-for><div style="padding:10px 0;font-size:13px;color:var(--fg3)">+ Add</div></div></sc-for>
+      </div>
+    </sc-if>
+    <!-- Budget -->
+    <sc-if value="{{ ptBudget }}" hint-placeholder-val="{{ false }}">
+      <div style="flex:1;overflow:auto;padding:24px 40px;display:grid;grid-template-columns:1fr 380px;gap:32px;align-content:start">
+        <div style="display:flex;flex-direction:column;gap:20px"><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px"><sc-for list="{{ budgetTotals }}" as="t" hint-placeholder-count="3"><div style="padding:16px 18px;border-radius:8px;border:1px solid var(--border);background:var(--surface)"><div style="font-family:var(--font-mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--fg3)">{{ t.l }}</div><div style="font-family:var(--font-serif);font-size:34px;line-height:1.1;margin-top:8px">{{ t.usd }}</div><div style="font-family:var(--font-mono);font-size:12px;color:var(--fg3);margin-top:2px">{{ t.jpy }}</div></div></sc-for></div><div style="display:flex;flex-direction:column"><sc-for list="{{ budgetRows }}" as="r" hint-placeholder-count="5"><div style="display:grid;grid-template-columns:120px 1fr auto;gap:16px;align-items:center;padding:12px 0;border-top:1px solid var(--border);font-size:14px"><span>{{ r.k }}</span><div style="height:4px;border-radius:2px;background:var(--surface-2);overflow:hidden"><div style="height:100%;width:{{ r.pct }};background:var(--accent)"></div></div><span style="font-family:var(--font-mono);font-size:13px">{{ r.v }}</span></div></sc-for></div></div>
+        <div style="padding:16px 18px;border-radius:8px;border:1px solid var(--border);align-self:start"><div style="font-size:14px">1 USD = <span style="font-family:var(--font-mono);border-bottom:1px solid var(--border)">148.2</span> JPY</div><div style="font-size:12px;color:var(--fg3);margin-top:4px">set by you on Sep 6 · <a>use today's rate</a></div></div>
+      </div>
+    </sc-if>
+    <!-- Documents -->
+    <sc-if value="{{ ptDocs }}" hint-placeholder-val="{{ false }}">
+      <div style="flex:1;overflow:auto;padding:24px 40px;display:grid;grid-template-columns:repeat(6,1fr);gap:16px;align-content:start">
+        <sc-for list="{{ docs }}" as="dc" hint-placeholder-count="4"><div style="display:flex;flex-direction:column;gap:8px"><div style="position:relative;aspect-ratio:3/4;border-radius:6px;background:var(--surface);border:1px solid var(--border);padding:14px;display:flex;flex-direction:column;gap:6px"><span style="height:6px;width:70%;background:var(--surface-2);border-radius:2px"></span><span style="height:4px;width:90%;background:var(--surface-2);border-radius:2px"></span><span style="height:4px;width:80%;background:var(--surface-2);border-radius:2px"></span><span style="position:absolute;right:8px;bottom:8px;font-family:var(--font-mono);font-size:10px;color:var(--fg2);background:var(--bg);border:1px solid var(--border);padding:2px 6px;border-radius:3px">{{ dc.pages }}</span></div><div style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ dc.name }}</div><div style="font-size:11px;color:var(--fg3);margin-top:-6px">{{ dc.of }}</div></div></sc-for>
+      </div>
+    </sc-if>
+    <!-- Map -->
+    <sc-if value="{{ ptMap }}" hint-placeholder-val="{{ false }}">
+      <div style="flex:1;display:grid;grid-template-columns:1fr 320px;min-height:0">
+        <div style="position:relative;background:var(--surface);overflow:hidden"><div style="position:absolute;inset:0;background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);background-size:64px 64px;opacity:.5"></div><div style="position:absolute;left:0;right:0;top:46%;height:30px;background:var(--surface-2);transform:rotate(-6deg)"></div><div style="position:absolute;top:0;bottom:0;left:58%;width:22px;background:var(--surface-2);transform:rotate(10deg)"></div><div style="position:absolute;left:16px;bottom:12px;font-family:var(--font-mono);font-size:11px;color:var(--fg3)">Tokyo · muted tiles · placeholder</div><sc-for list="{{ pins }}" as="pn" hint-placeholder-count="6"><button onClick="{{ pn.pick }}" style="position:absolute;left:{{ pn.x }};top:{{ pn.y }};transform:translate(-50%,-100%);width:{{ pn.size }};height:{{ pn.size }};border-radius:999px 999px 999px 0;background:{{ pn.color }};border:2px solid var(--bg);cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.2)"></button></sc-for></div>
+        <div style="border-left:1px solid var(--border);padding:20px;display:flex;flex-direction:column;gap:4px;overflow:auto"><div style="font-family:var(--font-mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--fg3);margin-bottom:8px">Pins · Tokyo</div><sc-for list="{{ pins }}" as="pn" hint-placeholder-count="6"><div onClick="{{ pn.pick }}" style="display:flex;gap:10px;align-items:center;padding:10px 8px;border-radius:6px;background:{{ pn.rowBg }};cursor:pointer"><span style="width:8px;height:8px;border-radius:999px;background:{{ pn.color }};flex:none"></span><div style="flex:1;min-width:0"><div style="font-size:14px">{{ pn.title }}</div><div style="font-size:11px;color:var(--fg3)">{{ pn.kind }} · {{ pn.place }} · {{ pn.when }}</div></div></div></sc-for></div>
+      </div>
+    </sc-if>
+    <!-- Locked -->
+    <sc-if value="{{ ptLocked }}" hint-placeholder-val="{{ false }}">
+      <div style="flex:1;padding:40px;display:flex;flex-direction:column;gap:14px;max-width:640px"><div onClick="{{ toggleReveal }}" style="position:relative;border-radius:8px;border:1px solid var(--border);background:var(--surface);padding:24px;cursor:pointer;overflow:hidden"><div style="filter:blur({{ lockBlur }});font-family:var(--font-mono);font-size:14px;line-height:1.9;transition:filter 200ms;user-select:none">Casey · passport 5X8 221 904 · exp Mar 2031<br>{{ her }} · passport 7K1 088 435 · exp Nov 2029<br>US Embassy Tokyo · +81 3-3224-5000<br>Travel insurance · Allianz · pol. 88-2140-77</div><sc-if value="{{ lockHidden }}" hint-placeholder-val="{{ true }}"><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:14px">Click to reveal</div></sc-if></div><div style="font-size:12px;color:var(--fg3)">Hidden from offline copies and exports. Re-locks after 60 seconds.</div></div>
+    </sc-if>
+    <!-- Itinerary · three columns -->
+    <sc-if value="{{ ptItinerary }}" hint-placeholder-val="{{ true }}">
+    <div style="flex:1;display:grid;grid-template-columns:380px 1fr 320px;min-height:0">
+      <div style="overflow:auto;border-right:1px solid var(--border);padding:20px 24px;display:flex;flex-direction:column;gap:20px;background:var(--surface)">
+        <div style="border-radius:8px;border:1px dashed var(--border);padding:10px 12px;display:flex;flex-direction:column;gap:6px"><div style="font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--fg3)">Unscheduled · {{ unschedN }}</div><sc-for list="{{ unsched }}" as="u" hint-placeholder-count="2"><div style="display:flex;gap:8px;align-items:center;font-size:13px"><span style="font-family:var(--font-mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--fg3);border:1px solid var(--border);padding:2px 5px;border-radius:3px">{{ u.kind }}</span><span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ u.title }}</span></div></sc-for></div>
+        <sc-for list="{{ itin }}" as="dy" hint-placeholder-count="3">
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="display:flex;align-items:baseline;gap:8px"><span style="font-family:var(--font-serif);font-size:26px;line-height:1">Day {{ dy.n }}</span><span style="font-family:var(--font-mono);font-size:11px;color:var(--fg2)">{{ dy.dow }} {{ dy.date }}</span><span style="flex:1"></span><span style="font-size:12px;color:var(--fg3)">{{ dy.city }}</span></div>
+            <sc-for list="{{ dy.items }}" as="it" hint-placeholder-count="2"><div onClick="{{ it.pick }}" style="display:grid;grid-template-columns:60px 1fr;gap:10px;padding:10px 12px;border-radius:8px;border:1px solid {{ it.border }};background:{{ it.bg }};cursor:pointer"><div><div style="font-family:var(--font-mono);font-size:11px;white-space:nowrap">{{ it.time }}</div><div style="font-family:var(--font-mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--fg3);margin-top:4px">{{ it.kind }}</div></div><div style="min-width:0"><div style="font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ it.title }}</div><div style="font-size:12px;color:var(--fg2);margin-top:2px">{{ it.place }}</div></div></div></sc-for>
+            <sc-if value="{{ dy.empty }}" hint-placeholder-val="{{ false }}"><div style="padding:10px 12px;border-radius:8px;border:1px dashed var(--border);font-family:var(--font-serif);font-style:italic;font-size:15px;color:var(--fg3)">Nothing yet. Drop an idea here.</div></sc-if>
+          </div>
+        </sc-for>
+      </div>
+      <div style="overflow:auto;padding:32px 40px;display:flex;flex-direction:column;gap:24px">
+        <div><div style="font-family:var(--font-mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--fg3)">{{ sel.kind }} · Day {{ sel.dayN }} · {{ sel.date }}</div><div style="font-family:var(--font-serif);font-size:40px;line-height:1.05;margin-top:10px">{{ sel.title }}</div><div style="font-size:15px;color:var(--fg2);margin-top:8px">{{ sel.place }}</div></div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
+          <div style="padding:14px 16px;border-radius:8px;border:1px solid var(--border);background:var(--surface)"><div style="font-family:var(--font-mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--fg3)">Time</div><div style="font-family:var(--font-mono);font-size:18px;margin-top:6px">{{ sel.time }}</div></div>
+          <div style="padding:14px 16px;border-radius:8px;border:1px solid var(--border);background:var(--surface)"><div style="font-family:var(--font-mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--fg3)">Cost</div><div style="font-family:var(--font-mono);font-size:18px;margin-top:6px">{{ sel.cost }}</div></div>
+          <div style="padding:14px 16px;border-radius:8px;border:1px solid var(--border);background:var(--surface)"><div style="font-family:var(--font-mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--fg3)">Confirmation</div><div style="font-family:var(--font-mono);font-size:18px;letter-spacing:.12em;margin-top:6px">{{ sel.confLabel }}</div></div>
+        </div>
+        <div style="display:flex;gap:8px"><button style="height:36px;padding:0 14px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--fg1);font-size:13px;cursor:pointer">Open in Maps</button><button style="height:36px;padding:0 14px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--fg1);font-size:13px;cursor:pointer">Share to chat</button><button style="height:36px;padding:0 14px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--fg1);font-size:13px;cursor:pointer">Edit</button></div>
+        <div><div style="font-family:var(--font-mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--fg3);margin-bottom:10px">Attachments · {{ sel.docs }}</div><div style="display:flex;gap:10px"><sc-for list="{{ sel.thumbs }}" as="t" hint-placeholder-count="1"><span style="width:72px;height:96px;border-radius:4px;background:var(--surface);border:1px solid var(--border);display:inline-flex;align-items:flex-end;justify-content:center;font-family:var(--font-mono);font-size:9px;color:var(--fg3);padding-bottom:6px">PDF</span></sc-for><span style="width:72px;height:96px;border-radius:4px;border:1px dashed var(--border);display:inline-flex;align-items:center;justify-content:center;color:var(--fg3);font-size:20px">+</span></div></div>
+        <div><div style="font-family:var(--font-mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--fg3);margin-bottom:10px">Notes</div><div style="font-size:15px;line-height:1.6;color:var(--fg1);max-width:560px">{{ sel.note }}</div><div style="font-size:12px;color:var(--fg3);margin-top:8px">Added by {{ sel.by }}</div></div>
+      </div>
+      <div style="overflow:auto;border-left:1px solid var(--border);padding:20px;display:flex;flex-direction:column;gap:12px;background:var(--surface)">
+        <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-family:var(--font-mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--fg3)">Ideas · drag onto a day</span><a style="font-size:12px">+ Add</a></div>
+        <sc-for list="{{ ideas }}" as="i" hint-placeholder-count="6"><div style="display:flex;gap:10px;padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--bg);cursor:grab" data-tray="1"><img src="{{ i.img }}" style="width:56px;height:56px;border-radius:6px;object-fit:cover;filter:sepia(.08) saturate(.88);flex:none" alt=""><div style="min-width:0;flex:1;display:flex;flex-direction:column;gap:3px"><div style="font-size:13px;font-weight:500;line-height:1.3">{{ i.title }}</div><div style="font-size:11px;color:var(--fg3)">{{ i.city }} · {{ i.by }}</div><div style="display:flex;justify-content:space-between;align-items:center;margin-top:auto"><span style="display:flex;gap:3px"><span style="width:18px;height:18px;border-radius:999px;background:var(--accent-soft);color:var(--accent);display:inline-flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:8px">{{ i.cv }}</span><span style="width:18px;height:18px;border-radius:999px;background:var(--green-soft);color:var(--green);display:inline-flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:8px">{{ i.hv }}</span></span><span style="font-family:var(--font-mono);font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:{{ i.stColor }}">{{ i.status }}</span></div></div></div></sc-for>
+      </div>
+    </div>
+    </sc-if>
+  </div>
+</sc-if>
+
+<sc-if value="{{ isOther }}" hint-placeholder-val="{{ false }}">
+  <div style="height:960px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:var(--fg3)"><div style="font-family:var(--font-serif);font-size:40px;color:var(--fg1)">{{ otherTitle }}</div><div style="font-size:14px">Desktop layout not in this round — see the mobile prototype.</div></div>
+</sc-if>
+
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;displayFont&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Newsreader&quot;,&quot;Cormorant Garamond&quot;,&quot;Lora&quot;,&quot;Instrument Serif&quot;],&quot;default&quot;:&quot;Newsreader&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Look&quot;},&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;light&quot;,&quot;dark&quot;],&quot;default&quot;:&quot;light&quot;,&quot;tsType&quot;:&quot;'light' | 'dark'&quot;,&quot;section&quot;:&quot;Look&quot;},&quot;herName&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;Yasmim&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;People&quot;}}">
+const P = (s, w, h) => `https://picsum.photos/seed/${s}/${w}/${h}`;
+const MEM = [
+  { id: 1, title: 'Tuesday tacos, again', date: 'Sep 1, 2026', loc: 'Home', type: 'Everyday', by: 'her', ex: 'Third week running. Nobody is complaining.', count: '3 photos', size: 'compact', img: P('tacos', 600, 600), month: 'September' },
+  { id: 2, title: 'The night the power went out', date: 'Aug 29, 2026', loc: 'Home', type: 'Everyday', by: 'Casey', ex: 'Candles, a deck of cards, and the loudest silence.', count: '9 photos · 1 video', size: 'medium', img: P('candles', 800, 600), month: 'August' },
+  { id: 3, title: 'Three days in Asheville', date: 'Aug 14–17, 2026', loc: 'Asheville, NC', type: 'Trip', by: 'Casey', ex: 'We meant to hike. We mostly ate. Saturday we did make it up to the parkway, late enough that the light was going gold.', count: '38 photos · 2 videos', size: 'large', img: P('asheville', 1200, 800), month: 'August' },
+  { id: 4, title: 'Two years', date: 'Jul 12, 2026', loc: 'Nonna\u2019s', type: 'Milestone', by: 'her', ex: 'Same table as the first time. Same order, honestly.', count: '12 photos', size: 'medium', img: P('twoyears', 800, 600), month: 'July' },
+  { id: 5, title: 'Rooftop movie', date: 'Jul 3, 2026', loc: 'Downtown', type: 'Date night', by: 'Casey', ex: 'Couldn\u2019t hear a word. Didn\u2019t matter.', count: '1 photo', size: 'compact', img: P('rooftop', 600, 600), month: 'July' },
+];
+const DETAIL = {
+  3: { take1a: 'We had a plan. The plan had trailheads and a start time. What actually happened is we found a biscuit place on the first morning and built the rest of the trip around going back to it.', quote: 'Nobody has ever regretted a second biscuit.', take1b: 'Saturday we did make it up to the parkway, late enough that the light was going gold. That\u2019s the photo below. The creek incident is not pictured.', inline: P('parkway', 1200, 700), inlineCap: 'Blue Ridge Parkway, 6:40 PM', take2: 'For the record, he fell in the creek. Fully. Shoes and all. Then he asked if I got it on video, and I had, and that is the video with 2 views because we\u2019ve watched it twice.' },
+  default: { take1a: 'A small one, but it belongs here. The kind of night that doesn\u2019t make it into any album unless you decide it does.', quote: 'The ordinary ones are the ones I forget first.', take1b: 'So here it is, written down before it goes.', inline: P('inlinedef', 1200, 700), inlineCap: 'Kitchen, later than it should have been', take2: 'Not much to add. It was nice. Write more of these.' },
+};
+const WAVE = Array.from({ length: 30 }, (_, i) => ({ h: (6 + Math.round(Math.abs(Math.sin(i * 1.7) * 14 + Math.cos(i * .8) * 4))) + 'px', c: i < 12 ? 'var(--fg1)' : 'var(--fg3)' }));
+const EV = [
+  { day: 2, title: 'Farmers market', owner: 'b', start: 9, len: 1.5 }, { day: 8, title: 'Dentist', owner: 'c', start: 14.5, len: 1 }, { day: 10, title: 'Book club', owner: 'h', start: 19, len: 2 },
+  { day: 11, title: 'Dinner at Nonna\u2019s', owner: 'b', start: 19, len: 2 }, { day: 19, title: 'Casey\u2019s parents visit', owner: 'b', allDay: true }, { day: 20, title: 'Casey\u2019s parents visit', owner: 'b', allDay: true },
+  { day: 25, title: 'Pay the car', owner: 'c', start: 9, len: .5 }, { day: 7, title: 'Yoga', owner: 'h', start: 7, len: 1 }, { day: 9, title: 'Standup', owner: 'c', start: 10, len: .5 }, { day: 12, title: 'Lake day', owner: 'b', allDay: true },
+];
+class Component extends DCLogic {
+  state = { screen: 'timeline', detailId: 3, filter: 'All', reacted: '', draft: '', sent: [], typing: false, priv: true, cType: 'Trip', cTitle: 'A weekend at the lake', calView: 'month', newOpen: false, sel: '0-0' };
+  renderVals() {
+    const s = this.state, p = this.props;
+    const her = p.herName ?? 'Yasmim', herIni = her[0];
+    const theme = p.theme ?? 'light';
+    const fontKey = ({ 'Newsreader': 'newsreader', 'Cormorant Garamond': 'cormorant', 'Lora': 'lora' })[p.displayFont ?? 'Newsreader'] || 'instrument';
+    const dotFor = o => o === 'c' ? 'var(--accent)' : o === 'h' ? 'var(--green)' : 'var(--fg1)';
+    const bgFor = o => o === 'c' ? 'var(--accent-soft)' : o === 'h' ? 'var(--green-soft)' : 'var(--surface-2)';
+    const go = screen => () => this.setState({ screen, newOpen: false });
+    const nav = [['Memories', 'timeline', ''], ['Plans', 'plan', ''], ['Calendar', 'calendar', ''], ['Chat', 'chat', '2'], ['Notes', 'notes', '1'], ['Us', 'us', '']].map(([label, key, badge]) => {
+      const on = s.screen === key || (key === 'timeline' && (s.screen === 'detail' || s.screen === 'composer'));
+      return { label, badge, go: go(key), bg: on ? 'var(--accent-soft)' : 'transparent', color: on ? 'var(--fg1)' : 'var(--fg2)', edge: on ? 'var(--accent)' : 'transparent' };
+    });
+    const filt = MEM.filter(m => s.filter === 'All' || (s.filter === 'Trips' && m.type === 'Trip') || (s.filter === 'Date nights' && m.type === 'Date night') || (s.filter === 'Everyday' && m.type === 'Everyday') || (s.filter === 'Milestones' && m.type === 'Milestone') || (s.filter === 'Videos' && m.count.includes('video')));
+    const deco = m => ({ ...m, by: m.by === 'her' ? her : m.by, open: () => this.setState({ screen: 'detail', detailId: m.id }),
+      cols: m.size === 'large' ? 6 : m.size === 'medium' ? 3 : 2, dir: m.size === 'large' ? 'row' : 'column',
+      imgW: m.size === 'large' ? '60%' : '100%', imgH: m.size === 'large' ? '380px' : m.size === 'medium' ? '220px' : '150px',
+      pad: m.size === 'large' ? '28px 28px 28px 14px' : '14px 16px 18px', titleSize: m.size === 'large' ? '40px' : m.size === 'medium' ? '26px' : '20px' });
+    const months = ['September', 'August', 'July'].map(label => ({ label: label + ' 2026', items: filt.filter(m => m.month === label).map(deco) })).filter(mo => mo.items.length);
+    const filters = ['All', 'Trips', 'Date nights', 'Everyday', 'Milestones', 'Videos'].map(f => ({ label: f, pick: () => this.setState({ filter: f }), bg: s.filter === f ? 'var(--fg1)' : 'transparent', color: s.filter === f ? 'var(--bg)' : 'var(--fg2)', border: s.filter === f ? 'var(--fg1)' : 'var(--border)' }));
+    const dm = MEM.find(m => m.id === s.detailId) || MEM[2];
+    const d = { ...dm, ...(DETAIL[dm.id] || DETAIL.default), by: dm.by === 'her' ? her : dm.by, hero: dm.img.replace(/\d+\/\d+$/, '1600/900'),
+      gallery: [{ src: P(dm.id + 'g1', 600, 600), span: 2, video: true, dur: '0:42' }, { src: P(dm.id + 'g2', 400, 400), span: 1 }, { src: P(dm.id + 'g3', 400, 400), span: 1 }, { src: P(dm.id + 'g4', 400, 400), span: 1 }, { src: P(dm.id + 'g5', 400, 400), span: 1 }, { src: P(dm.id + 'g6', 400, 400), span: 1 }, { src: P(dm.id + 'g7', 400, 400), span: 1 }] };
+    const reactions = [['loved it', 2], ['made me laugh', 1], ['miss this', 0], ['again please', 0]].map(([l, n]) => ({ label: l, n: String(n + (s.reacted === l ? 1 : 0)), pick: () => this.setState({ reacted: s.reacted === l ? '' : l }), bg: s.reacted === l ? 'var(--accent-soft)' : 'transparent', border: s.reacted === l ? 'var(--accent)' : 'var(--border)' }));
+    const base = [
+      { from: 'h', type: 'text', text: 'Did you see the sky on your way home', time: '9:38 PM' },
+      { from: 'me', type: 'photo', img: P('sunset', 640, 480), time: '9:40 PM' },
+      { from: 'h', type: 'photos', imgs: ['p1', 'p2', 'p3', 'p4'].map(x => ({ src: P(x, 320, 240) })), time: '9:40 PM' },
+      { from: 'me', type: 'voice', dur: '0:42', time: '9:41 PM' },
+      { from: 'h', type: 'memory', img: P('asheville', 400, 400), title: 'Three days in Asheville', sub: 'Aug 14–17 · 38 photos', memId: 3, time: '9:41 PM' },
+      { from: 'h', type: 'link', url: 'resy.com/nonnas', title: 'Nonna\u2019s — Reserve a table', domain: 'resy.com', time: '9:42 PM' },
+      { from: 'me', type: 'text', text: 'Booked for Friday. 7.', time: 'Seen 9:42 PM' },
+      { from: 'h', type: 'planitem', kind: 'activity', title: 'Fushimi Inari at sunrise', sub: 'Japan, spring 2027 · unscheduled', time: '9:44 PM' }, ...s.sent];
+    const msgs = base.map((m, i) => ({ ...m, id: i, isText: m.type === 'text', isPhoto: m.type === 'photo', isPhotos: m.type === 'photos', isVoice: m.type === 'voice', isMemory: m.type === 'memory', isLink: m.type === 'link', isPlanItem: m.type === 'planitem',
+      self: m.from === 'me' ? 'flex-end' : 'flex-start', items: m.from === 'me' ? 'flex-end' : 'flex-start', bg: m.from === 'me' ? 'var(--surface-2)' : 'var(--surface)', meta: m.time, openMem: () => this.setState({ screen: 'detail', detailId: m.memId }), openPlan: go('plan') }));
+    const send = () => { if (!s.draft.trim()) return; this.setState({ sent: [...s.sent, { from: 'me', type: 'text', text: s.draft, time: 'Delivered' }], draft: '', typing: true }); setTimeout(() => this.setState({ typing: false }), 2500); };
+    const days = [{ n: '', events: [], color: 'var(--fg1)', todayBg: 'transparent' }].concat(Array.from({ length: 30 }, (_, i) => { const n = i + 1, today = n === 6; return { n: String(n), color: today ? '#faf9f6' : 'var(--fg1)', todayBg: today ? 'var(--accent)' : 'transparent', events: EV.filter(e => e.day === n).map(e => ({ title: e.title, dot: dotFor(e.owner), bg: bgFor(e.owner) })) }; })).concat(Array.from({ length: 4 }, (_, i) => ({ n: String(i + 1), events: [], color: 'var(--fg3)', todayBg: 'transparent' })));
+    const wk = [7, 8, 9, 10, 11, 12, 13], dows = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const fmt = h => { const hr = Math.floor(h), m = h % 1 ? '30' : '00'; return ((hr + 11) % 12 + 1) + ':' + m + (hr >= 12 ? ' PM' : ' AM'); };
+    const weekDays = wk.map((n, i) => ({ n: String(n), dow: dows[i], color: 'var(--fg1)' }));
+    const hours = Array.from({ length: 13 }, (_, i) => ({ label: fmt(7 + i) }));
+    const weekCols = wk.map(n => ({ events: EV.filter(e => e.day === n && !e.allDay).map(e => ({ title: e.title, time: fmt(e.start) + ' – ' + fmt(e.start + e.len), top: ((e.start - 7) * 56) + 'px', h: Math.max(28, e.len * 56 - 4) + 'px', dot: dotFor(e.owner), bg: bgFor(e.owner) })) }));
+    const types = ['Trip', 'Date night', 'Everyday', 'Milestone'].map(t => ({ label: t, pick: () => this.setState({ cType: t }), bg: s.cType === t ? 'var(--accent-soft)' : 'transparent', border: s.cType === t ? 'var(--accent)' : 'var(--border)' }));
+    const tools = [['H', 'var(--font-serif)', 500, 'normal'], ['B', 'inherit', 600, 'normal'], ['I', 'inherit', 400, 'italic'], ['• list', 'inherit', 400, 'normal'], ['1. list', 'inherit', 400, 'normal'], ['“ quote', 'var(--font-serif)', 400, 'italic'], ['+ photo', 'inherit', 400, 'normal']].map(([label, font, weight, style]) => ({ label, font, weight, style }));
+    const tray = ['lake1', 'lake2', 'lake3', 'lake4', 'lake5', 'lake6', 'lake7'].map((x, i) => ({ src: P(x, 300, 300), cover: i === 0, uploading: i === 5, pct: '62%', op: i === 5 ? .6 : 1, hasCap: i === 0 || i === 2, cap: i === 0 ? 'First light from the dock. Cold.' : 'Gas-station coffee, great', border: i === 0 ? 'var(--accent)' : 'var(--border)' }));
+    const other = { notes: 'Notes', us: 'Us' };
+    const PD = window.OURS_PLANS || { PLANS: [], DAYS: [], UNSCHEDULED: [], IDEAS: [] };
+    const plan = PD.PLANS[0] || {};
+    const NOTES = { 'JL 5 · JFK → HND': 'Premium economy, the one splurge. Check in opens 24h before — set a reminder. Terminal 1, not 4.', 'Ichiran ramen': 'The Shibuya one has a shorter line after 9. Order at the machine, tick the extra garlic box.', 'Check in · Hotel Niwa': 'Ask for a high floor. Luggage forwarding to Kyoto from the front desk, ¥2,000 a bag.', 'teamLab Planets': 'Wear shorts or roll your trousers — you walk through water. Tickets are timed, arrive 15 min early.', 'Monorail to Hamamatsucho': 'Suica works. About 20 minutes.' };
+    const itin = PD.DAYS.map((dy, di) => ({ ...dy, empty: !dy.items.length, items: dy.items.map((it, ii) => { const k = di + '-' + ii, on = s.sel === k; return { ...it, k, dayN: dy.n, date: dy.date, pick: () => this.setState({ sel: k }), border: on ? 'var(--accent)' : 'var(--border)', bg: on ? 'var(--accent-soft)' : 'var(--bg)' }; }) }));
+    const allItems = itin.flatMap(dy => dy.items);
+    const selRaw = allItems.find(i => i.k === s.sel) || allItems[0] || {};
+    const sel = { ...selRaw, by: selRaw.by === 'Yasmim' ? her : selRaw.by, confLabel: selRaw.conf || '—', thumbs: Array.from({ length: selRaw.docs || 0 }, () => ({})), note: NOTES[selRaw.title] || 'No notes yet.' };
+    const unsched = PD.UNSCHEDULED.map(u => ({ ...u, by: u.by === 'Yasmim' ? her : u.by }));
+    const vote = v => v === 'like' ? '↑' : v === 'meh' ? '~' : '✕';
+    const ideas = PD.IDEAS.map(i => ({ ...i, by: i.by === 'Yasmim' ? her : i.by, cv: 'C' + vote(i.c), hv: herIni + vote(i.h), stColor: i.status === 'decided' ? 'var(--green)' : i.status === 'shortlisted' ? 'var(--accent)' : 'var(--fg3)' }));
+    const pt = s.planTab || 'Itinerary';
+    const dSegs = ['Overview', 'Itinerary', 'Ideas', 'Bookings', 'Checklists', 'Budget', 'Documents', 'Map', 'Locked note'].map(l => ({ label: l, pick: () => this.setState({ planTab: l }), edge: l === pt ? 'var(--accent)' : 'transparent', color: l === pt ? 'var(--fg1)' : 'var(--fg2)' }));
+    const ideaFilters = ['All', 'Tokyo', 'Kyoto', 'Osaka', 'Shortlisted', 'Decided'].map(f => ({ label: f, pick: () => this.setState({ ideaFilter: f }), bg: (s.ideaFilter || 'All') === f ? 'var(--fg1)' : 'transparent', color: (s.ideaFilter || 'All') === f ? 'var(--bg)' : 'var(--fg2)', border: (s.ideaFilter || 'All') === f ? 'var(--fg1)' : 'var(--border)' }));
+    const ideasF = ideas.filter(i => !s.ideaFilter || s.ideaFilter === 'All' || i.city === s.ideaFilter || i.status === s.ideaFilter.toLowerCase());
+    const bookings = (PD.BOOKINGS || []).map(b => ({ ...b, isRoute: b.kind === 'flight' || b.kind === 'train', isStay: b.kind === 'stay', isTicket: b.kind === 'ticket', thumbs: Array.from({ length: b.docs }, () => ({})) }));
+    const ticks = s.ticks || {};
+    const lists = (PD.LISTS || []).map((l, li) => { const items = l.items.map((it, ii) => { const k = li + '-' + ii, done = ticks[k] ?? it.done; return { ...it, done, toggle: () => this.setState({ ticks: { ...ticks, [k]: !done } }), border: done ? 'var(--accent)' : 'var(--border)', bg: done ? 'var(--accent)' : 'transparent', color: done ? 'var(--fg3)' : 'var(--fg1)', deco: done ? 'line-through' : 'none', whoBg: it.who === 'C' ? 'var(--accent-soft)' : 'var(--green-soft)', whoFg: it.who === 'C' ? 'var(--accent)' : 'var(--green)', who: it.who === 'Y' ? herIni : 'C' }; }); const done = l.done + items.filter(i => i.done).length - l.items.filter(i => i.done).length; return { ...l, name: l.name.replace('Yasmim', her), items, done, pct: Math.round(done / l.total * 100) + '%' }; });
+    const rings = lists.map(l => ({ name: l.name, n: l.done + '/' + l.total, pct: l.pct }));
+    const B = PD.BUDGET || { rows: [] };
+    const budgetTotals = [{ l: 'Planned', usd: B.planned, jpy: B.plannedJpy }, { l: 'Committed', usd: B.committed, jpy: B.committedJpy }, { l: 'Paid', usd: B.paid, jpy: B.paidJpy }];
+    const budgetRows = (B.rows || []).map(([k, v, pct]) => ({ k, v, pct: pct + '%' }));
+    const kindColor = k => ({ food: 'var(--accent)', activity: 'var(--green)', stay: 'var(--plum)', ticket: 'var(--ochre)', transport: 'var(--fg2)' })[k] || 'var(--fg2)';
+    const pins = [['stay', 'Hotel Niwa', 'Chiyoda', 'Day 1', 46, 38], ['food', 'Ichiran ramen', 'Shibuya', 'Day 1', 24, 62], ['ticket', 'teamLab Planets', 'Toyosu', 'Day 2', 72, 74], ['activity', 'Meiji Jingu', 'Shibuya', 'Day 2', 20, 44], ['ticket', 'Shibuya Sky', 'Scramble Square', 'Day 2', 28, 58], ['transport', 'Haneda Airport', 'Ota', 'Day 1', 66, 88]].map(([kind, title, place, when, x, y], i) => ({ kind, title, place, when, x: x + '%', y: y + '%', color: kindColor(kind), size: s.pin === i ? '24px' : '16px', rowBg: s.pin === i ? 'var(--surface)' : 'transparent', pick: () => this.setState({ pin: s.pin === i ? null : i }) }));
+    const newItems = [['Memory', 'photos + writing', 'composer'], ['Plan', 'trip or event', 'plan'], ['Idea', 'into a plan', 'plan'], ['Event', 'on the calendar', 'calendar']].map(([label, hint, screen]) => ({ label, hint, pick: go(screen) }));
+    return {
+      her, herIni, theme, fontKey, nav,
+      isTimeline: s.screen === 'timeline', isDetail: s.screen === 'detail', isComposer: s.screen === 'composer', isChat: s.screen === 'chat', isCalendar: s.screen === 'calendar', isOther: !!other[s.screen], otherTitle: other[s.screen] || '',
+      isPlan: s.screen === 'plan', goPlan: go('plan'), plan, dSegs, itin, unsched, unschedN: unsched.length, sel, ideas, ideasF, ideaFilters, bookings, lists, rings, budgetTotals, budgetRows, docs: PD.DOCS || [], pins, newestIdeas: ideas.slice(0, 3),
+      ptOverview: pt === 'Overview', ptItinerary: pt === 'Itinerary', ptIdeas: pt === 'Ideas', ptBookings: pt === 'Bookings', ptLists: pt === 'Checklists', ptBudget: pt === 'Budget', ptDocs: pt === 'Documents', ptMap: pt === 'Map', ptLocked: pt === 'Locked note',
+      ptToBookings: () => this.setState({ planTab: 'Bookings' }), ptToBudget: () => this.setState({ planTab: 'Budget' }), ptToLists: () => this.setState({ planTab: 'Checklists' }), ptToIdeas: () => this.setState({ planTab: 'Ideas' }), ptToLocked: () => this.setState({ planTab: 'Locked note' }),
+      lockBlur: s.reveal ? '0px' : '6px', lockHidden: !s.reveal, toggleReveal: () => this.setState({ reveal: !s.reveal }), newOpen: s.newOpen, toggleNew: () => this.setState({ newOpen: !s.newOpen }), newItems,
+      goTimeline: go('timeline'), goComposer: go('composer'), openOtd: () => this.setState({ screen: 'detail', detailId: 5 }),
+      months, filters, d, reactions,
+      msgs, wave: WAVE, typing: s.typing, draft: s.draft, onDraft: e => this.setState({ draft: e.target.value }), onDraftKey: e => { if (e.key === 'Enter') send(); }, send, sendBg: s.draft ? 'var(--accent)' : 'var(--surface-2)', sendFg: s.draft ? '#faf9f6' : 'var(--fg3)',
+      chatMedia: ['sunset', 'p1', 'p2', 'p3', 'p4', 'cm1', 'cm2', 'cm3', 'cm4'].map(x => ({ src: P(x, 200, 200) })),
+      days, weekDays, hours, weekCols, isMonth: s.calView === 'month', isWeek: s.calView === 'week', setMonth: () => this.setState({ calView: 'month' }), setWeek: () => this.setState({ calView: 'week' }), monthBg: s.calView === 'month' ? 'var(--bg)' : 'transparent', weekBg: s.calView === 'week' ? 'var(--bg)' : 'transparent',
+      types, tools, tray, cTitle: s.cTitle, onTitle: e => this.setState({ cTitle: e.target.value }), privBg: s.priv ? 'var(--accent)' : 'var(--surface-2)', privKnob: s.priv ? '19px' : '3px', togglePrivate: () => this.setState({ priv: !s.priv }),
+    };
+  }
+}
+</script>
+</body>
+</html>

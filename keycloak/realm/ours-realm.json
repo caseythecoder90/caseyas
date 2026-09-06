@@ -1,0 +1,137 @@
+{
+  "realm": "ours",
+  "displayName": "Ours",
+  "enabled": true,
+  "sslRequired": "external",
+
+  "registrationAllowed": false,
+  "registrationEmailAsUsername": false,
+  "resetPasswordAllowed": false,
+  "loginWithEmailAllowed": false,
+  "duplicateEmailsAllowed": false,
+  "verifyEmail": false,
+  "rememberMe": true,
+
+  "bruteForceProtected": true,
+  "permanentLockout": false,
+  "failureFactor": 5,
+  "waitIncrementSeconds": 900,
+  "maxFailureWaitSeconds": 3600,
+  "maxDeltaTimeSeconds": 43200,
+  "quickLoginCheckMilliSeconds": 1000,
+  "minimumQuickLoginWaitSeconds": 60,
+
+  "passwordPolicy": "length(14) and notUsername and passwordHistory(5)",
+
+  "ssoSessionIdleTimeout": 1209600,
+  "ssoSessionMaxLifespan": 2592000,
+  "ssoSessionIdleTimeoutRememberMe": 2592000,
+  "ssoSessionMaxLifespanRememberMe": 7776000,
+  "accessTokenLifespan": 300,
+
+  "eventsEnabled": true,
+  "eventsExpiration": 2592000,
+  "enabledEventTypes": [],
+  "adminEventsEnabled": true,
+  "adminEventsDetailsEnabled": true,
+
+  "otpPolicyType": "totp",
+  "otpPolicyAlgorithm": "HmacSHA1",
+  "otpPolicyDigits": 6,
+  "otpPolicyPeriod": 30,
+  "otpPolicyLookAheadWindow": 1,
+
+  "webAuthnPolicyPasswordlessRpEntityName": "Ours",
+  "webAuthnPolicyPasswordlessUserVerificationRequirement": "required",
+  "webAuthnPolicyPasswordlessResidentKey": "preferred",
+  "webAuthnPolicyPasswordlessAuthenticatorAttachment": "not specified",
+  "webAuthnPolicyPasswordlessCreateTimeout": 0,
+
+  "requiredActions": [
+    {
+      "alias": "UPDATE_PASSWORD",
+      "name": "Update Password",
+      "providerId": "UPDATE_PASSWORD",
+      "enabled": true,
+      "defaultAction": false,
+      "priority": 10,
+      "config": {}
+    },
+    {
+      "alias": "CONFIGURE_TOTP",
+      "name": "Configure OTP",
+      "providerId": "CONFIGURE_TOTP",
+      "enabled": true,
+      "defaultAction": false,
+      "priority": 20,
+      "config": {}
+    },
+    {
+      "alias": "CONFIGURE_RECOVERY_AUTHN_CODES",
+      "name": "Recovery Authentication Codes",
+      "providerId": "CONFIGURE_RECOVERY_AUTHN_CODES",
+      "enabled": true,
+      "defaultAction": false,
+      "priority": 30,
+      "config": {}
+    },
+    {
+      "alias": "webauthn-register-passwordless",
+      "name": "Webauthn Register Passwordless",
+      "providerId": "webauthn-register-passwordless",
+      "enabled": true,
+      "defaultAction": false,
+      "priority": 40,
+      "config": {}
+    }
+  ],
+
+  "users": [
+    {
+      "username": "${OURS_USER1_USERNAME}",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        { "type": "password", "value": "${OURS_USER1_PASSWORD}", "temporary": true }
+      ],
+      "requiredActions": ["UPDATE_PASSWORD", "CONFIGURE_TOTP"]
+    },
+    {
+      "username": "${OURS_USER2_USERNAME}",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        { "type": "password", "value": "${OURS_USER2_PASSWORD}", "temporary": true }
+      ],
+      "requiredActions": ["UPDATE_PASSWORD", "CONFIGURE_TOTP"]
+    }
+  ],
+
+  "clients": [
+    {
+      "clientId": "ours-web",
+      "name": "Ours web app",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${OURS_WEB_CLIENT_SECRET}",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "frontchannelLogout": false,
+      "rootUrl": "${OURS_APP_URL}",
+      "baseUrl": "/",
+      "redirectUris": ["${OURS_APP_URL}/login/oauth2/code/keycloak"],
+      "webOrigins": [],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "${OURS_APP_URL}/*",
+        "backchannel.logout.url": "${OURS_APP_URL}/logout/connect/back-channel/keycloak",
+        "backchannel.logout.session.required": "true",
+        "backchannel.logout.revoke.offline.tokens": "false"
+      }
+    }
+  ]
+}

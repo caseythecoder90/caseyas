@@ -1,0 +1,26 @@
+# Test profile: explicit provider endpoints so the context starts without a Keycloak to discover.
+# Mongo comes from Testcontainers through @ServiceConnection.
+spring:
+  security:
+    oauth2:
+      client:
+        registration:
+          keycloak:
+            client-id: ours-web
+            client-secret: test-secret
+            authorization-grant-type: authorization_code
+            scope: openid,profile
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+        provider:
+          keycloak:
+            authorization-uri: http://keycloak.test/realms/ours/protocol/openid-connect/auth
+            token-uri: http://keycloak.test/realms/ours/protocol/openid-connect/token
+            jwk-set-uri: http://keycloak.test/realms/ours/protocol/openid-connect/certs
+            user-info-uri: http://keycloak.test/realms/ours/protocol/openid-connect/userinfo
+            user-name-attribute: preferred_username
+
+server:
+  servlet:
+    session:
+      cookie:
+        secure: false

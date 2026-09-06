@@ -1,0 +1,27 @@
+# Build output
+backend/**/target/
+frontend/dist/
+frontend/dev-dist/
+keycloak/theme/dist_keycloak/
+
+# Dependencies
+frontend/node_modules/
+keycloak/theme/node_modules/
+
+# Local environment and secrets — never commit
+.env
+.env.*
+!.env.example
+*.local.md
+*.local.yml
+
+# IDE and OS
+.idea/
+*.iml
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*

@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Newsreader:ital,wght@0,400;0,500;1,400&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Lora:ital,wght@0,400;0,500;1,400&family=Inter+Tight:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#e9e5dc;font-family:'Inter Tight',system-ui,sans-serif;color:#121110}
+a{color:#c84b31;text-decoration:none}a:hover{text-decoration:underline;text-underline-offset:3px}
+input,button{font:inherit}
+*{box-sizing:border-box}
+.ours{--bg:#faf9f6;--surface:#f0ede5;--surface-2:#e8e4d9;--fg1:#121110;--fg2:#5a574f;--fg3:#8a857a;--border:#d4d0c5;--accent:#c84b31;--accent-soft:rgba(200,75,49,.12);--green:#78866a;--green-soft:rgba(120,134,106,.16);--danger:#b33e26;--font-serif:'Newsreader',Georgia,serif;--font-sans:'Inter Tight',system-ui,sans-serif;--font-mono:'JetBrains Mono',ui-monospace,monospace}
+.ours[data-theme="dark"]{--bg:#121110;--surface:#1a1917;--surface-2:#23211e;--fg1:#faf9f6;--fg2:#a8a49a;--fg3:#6e6a61;--border:#2e2b26;--accent:#d4593a;--accent-soft:rgba(212,89,58,.16);--green:#8a9a78;--green-soft:rgba(138,154,120,.18);--danger:#e26a4a}
+.ours[data-font="cormorant"]{--font-serif:'Cormorant Garamond',Georgia,serif}
+.ours[data-font="lora"]{--font-serif:'Lora',Georgia,serif}
+.ours[data-font="instrument"]{--font-serif:'Instrument Serif',Georgia,serif}
+.ours input::placeholder{color:var(--fg3)}
+.ours input:focus{outline:2px solid var(--accent);outline-offset:2px}
+.ours button:active{transform:translateY(1px)}
+.idp{width:420px;background:var(--bg);color:var(--fg1);font-family:var(--font-sans);font-size:15px;line-height:1.5;border:1px solid var(--border);border-radius:12px;overflow:hidden;display:flex;flex-direction:column}
+.idl{font:600 10.5px 'JetBrains Mono',monospace;letter-spacing:.08em;color:#5a574f;display:flex;gap:8px;align-items:baseline}
+.idl b{font-weight:600;padding:3px 7px;background:#1a1a1a;color:#fff;border-radius:4px}
+.eyebrow{font-family:var(--font-mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--fg3)}
+.h{font-family:var(--font-serif);font-size:34px;line-height:1.05}
+.fld{height:48px;padding:0 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--fg1);font-size:15px;width:100%}
+.btn{height:48px;border-radius:8px;border:1px solid var(--accent);background:var(--accent);color:#faf9f6;font-weight:500;font-size:15px;cursor:pointer;width:100%}
+.btn2{height:48px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--fg1);font-weight:500;font-size:15px;cursor:pointer;width:100%;white-space:nowrap}
+.lbl{font-size:13px;color:var(--fg2);margin-bottom:6px}
+</style>
+</helmet>
+<div class="ours" data-theme="{{ theme }}" data-font="{{ fontKey }}" style="padding:40px;display:flex;flex-direction:column;gap:32px">
+<div style="display:flex;flex-direction:column;gap:6px;max-width:720px"><div style="font-family:'Instrument Serif',serif;font-size:30px;line-height:1;color:#121110">Ours — identity pages (Keycloak theme)</div><div style="font-size:13px;color:#5a574f;line-height:1.55">Served by the identity service, styled as one theme. Same tokens as the app: paper/ink, terracotta, serif headings, mono for codes. Cards are 420 wide (mobile-first; center them on desktop). Toggle theme and display font in Tweaks. <a href="Ours — mobile prototype.dc.html">Mobile →</a> · <a href="Ours — desktop.dc.html">Desktop →</a></div></div>
+
+<div style="display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start">
+
+<!-- 1 sign in -->
+<div style="display:flex;flex-direction:column;gap:9px"><div class="idl"><b>1</b>login.ftl · step 1</div>
+<div class="idp" style="height:760px;position:relative">
+  <img src="https://picsum.photos/seed/oursbackdrop/840/1520" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:sepia(.18) saturate(.7) brightness(.55)" alt="">
+  <div style="position:absolute;inset:0;background:linear-gradient(to bottom,rgba(18,17,16,.3),rgba(18,17,16,.1) 35%,rgba(18,17,16,.85) 65%,#121110)"></div>
+  <div style="position:relative;margin-top:auto;padding:0 28px 36px;color:#faf9f6;display:flex;flex-direction:column;gap:12px">
+    <div style="font-family:var(--font-serif);font-size:60px;line-height:.95">ours</div>
+    <div style="font-size:14px;color:#a8a49a;margin-bottom:12px">Casey &amp; {{ her }} · since Jul 12, 2024</div>
+    <input value="casey" class="fld" style="background:rgba(26,25,23,.85);border-color:#2e2b26;color:#faf9f6" placeholder="Username">
+    <input type="password" value="••••••••••••" class="fld" style="background:rgba(26,25,23,.85);border-color:#2e2b26;color:#faf9f6" placeholder="Password">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0"><span style="font-size:14px;color:#a8a49a">Remember me on this device</span><span style="width:40px;height:24px;border-radius:999px;background:var(--accent);position:relative"><span style="position:absolute;top:3px;left:19px;width:18px;height:18px;border-radius:999px;background:#faf9f6"></span></span></div>
+    <button class="btn">Continue</button>
+    <button class="btn2" style="border-color:#2e2b26;color:#faf9f6;display:flex;align-items:center;justify-content:center;gap:8px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 18v3c0 .6.4 1 1 1h4v-3h3v-3h2l1.4-1.4a6.5 6.5 0 1 0-4-4Z"></path><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"></circle></svg>Sign in with a passkey</button>
+    <div style="font-family:var(--font-mono);font-size:12px;color:#6e6a61;margin-top:8px">Invite only. No sign-up.</div>
+  </div>
+</div></div>
+
+<!-- 2 totp -->
+<div style="display:flex;flex-direction:column;gap:9px"><div class="idl"><b>2</b>login-otp.ftl · step 2 + error</div>
+<div class="idp" style="padding:36px 28px;gap:20px">
+  <div><div class="eyebrow">Step 2 of 2</div><div class="h" style="margin-top:8px">One more thing.</div><div style="color:var(--fg2);margin-top:8px;font-size:15px">Enter the 6-digit code from your authenticator.</div></div>
+  <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px">
+    <sc-for list="{{ boxes }}" as="b" hint-placeholder-count="6"><div style="height:56px;border-radius:8px;border:1px solid {{ b.border }};background:var(--surface);display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:22px">{{ b.ch }}</div></sc-for>
+  </div>
+  <div style="font-size:12px;color:var(--fg3)">Boxes auto-advance; paste fills all six.</div>
+  <button class="btn">Verify</button>
+  <div style="display:flex;justify-content:space-between;font-size:14px"><a style="color:var(--fg2)">← Back</a><a style="color:var(--fg1);border-bottom:1px solid var(--fg3)">Use a recovery code instead</a></div>
+  <div style="border-top:1px solid var(--border);padding-top:20px;display:flex;flex-direction:column;gap:12px">
+    <div class="eyebrow" style="color:var(--danger)">Error state</div>
+    <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px"><sc-for list="{{ errBoxes }}" as="b" hint-placeholder-count="6"><div style="height:56px;border-radius:8px;border:1px solid var(--danger);background:var(--surface);display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:22px">{{ b.ch }}</div></sc-for></div>
+    <div style="font-size:13px;color:var(--danger)">That code didn't work. Codes rotate every 30 seconds — try the newest one. 2 attempts left.</div>
+  </div>
+</div></div>
+
+<!-- 3 totp setup -->
+<div style="display:flex;flex-direction:column;gap:9px"><div class="idl"><b>3</b>login-config-totp.ftl · first-time setup</div>
+<div class="idp" style="padding:36px 28px;gap:20px">
+  <div><div class="eyebrow">Set up your authenticator</div><div class="h" style="margin-top:8px">Scan this once.</div><div style="color:var(--fg2);margin-top:8px;font-size:15px">Open your authenticator app and scan the code. It'll start producing 6-digit codes for Ours.</div></div>
+  <div style="display:flex;justify-content:center;padding:20px;border-radius:8px;background:#faf9f6;border:1px solid var(--border)">
+    <div style="display:grid;grid-template-columns:repeat(21,8px);grid-auto-rows:8px;gap:0"><sc-for list="{{ qr }}" as="q" hint-placeholder-count="441"><span style="background:{{ q.c }}"></span></sc-for></div>
+  </div>
+  <details style="font-size:14px"><summary style="cursor:pointer;color:var(--fg1)">Can't scan? Enter the key manually</summary><div style="margin-top:10px;padding:12px 14px;border-radius:8px;background:var(--surface);border:1px solid var(--border);font-family:var(--font-mono);font-size:13px;letter-spacing:.08em;word-break:break-all;display:flex;justify-content:space-between;gap:12px"><span>JBSW Y3DP EHPK 3PXP 7QRS TMNQ</span><a style="flex:none">Copy</a></div><div style="font-size:12px;color:var(--fg3);margin-top:6px">Type: time-based · Digits: 6 · Interval: 30s</div></details>
+  <div><div class="lbl">Confirm with a code from the app</div><div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px"><sc-for list="{{ emptyBoxes }}" as="b" hint-placeholder-count="6"><div style="height:52px;border-radius:8px;border:1px solid {{ b.border }};background:var(--surface)"></div></sc-for></div></div>
+  <div><div class="lbl">Device name <span style="color:var(--fg3)">(optional)</span></div><input class="fld" value="Casey's iPhone"></div>
+  <button class="btn">Turn on authenticator</button>
+</div></div>
+
+<!-- 4 recovery codes -->
+<div style="display:flex;flex-direction:column;gap:9px"><div class="idl"><b>4</b>login-recovery-authn-code-config.ftl · shown once</div>
+<div class="idp" style="padding:36px 28px;gap:20px">
+  <div><div class="eyebrow">Recovery codes</div><div class="h" style="margin-top:8px">Save these somewhere real.</div><div style="color:var(--fg2);margin-top:8px;font-size:15px">Each code works once, if you ever lose your phone. You won't see them again after this page.</div></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 20px;padding:18px 20px;border-radius:8px;background:var(--surface);border:1px solid var(--border);font-family:var(--font-mono);font-size:14px;letter-spacing:.06em">
+    <sc-for list="{{ codes }}" as="c" hint-placeholder-count="10"><div style="display:flex;gap:10px"><span style="color:var(--fg3)">{{ c.i }}</span><span>{{ c.v }}</span></div></sc-for>
+  </div>
+  <div style="display:flex;gap:8px"><button class="btn2">Copy</button><button class="btn2">Download .txt</button></div>
+  <div onClick="{{ toggleSaved }}" style="display:flex;gap:12px;align-items:flex-start;cursor:pointer;padding:4px 0"><span style="width:22px;height:22px;border-radius:4px;border:1px solid {{ savedBorder }};background:{{ savedBg }};flex:none;display:flex;align-items:center;justify-content:center;color:#faf9f6;margin-top:1px"><sc-if value="{{ saved }}" hint-placeholder-val="{{ false }}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg></sc-if></span><span style="font-size:14px;color:var(--fg1)">I saved these. I understand they won't be shown again.</span></div>
+  <button class="btn" style="opacity:{{ contOp }}" disabled="{{ notSaved }}">Continue</button>
+</div></div>
+
+<!-- 5 passkey -->
+<div style="display:flex;flex-direction:column;gap:9px"><div class="idl"><b>5</b>webauthn-register.ftl · optional prompt</div>
+<div class="idp" style="padding:36px 28px;gap:20px">
+  <div style="width:56px;height:56px;border-radius:8px;background:var(--accent-soft);color:var(--accent);display:flex;align-items:center;justify-content:center"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 18v3c0 .6.4 1 1 1h4v-3h3v-3h2l1.4-1.4a6.5 6.5 0 1 0-4-4Z"></path><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"></circle></svg></div>
+  <div><div class="h">Skip the code next time.</div><div style="color:var(--fg2);margin-top:10px;font-size:15px;line-height:1.6">Set up a passkey on this device and sign in with your face or fingerprint. It stays on this phone — nothing leaves it.</div></div>
+  <div style="display:flex;flex-direction:column;gap:8px;font-size:14px;color:var(--fg2)"><div style="display:flex;gap:10px"><span style="color:var(--green)">—</span>Works offline, can't be phished</div><div style="display:flex;gap:10px"><span style="color:var(--green)">—</span>Your authenticator still works as backup</div></div>
+  <button class="btn">Set up a passkey</button>
+  <a style="text-align:center;font-size:14px;color:var(--fg2)">Not now</a>
+</div></div>
+
+<!-- 6 change password -->
+<div style="display:flex;flex-direction:column;gap:9px"><div class="idl"><b>6</b>login-update-password.ftl</div>
+<div class="idp" style="padding:36px 28px;gap:16px">
+  <div><div class="eyebrow">Account</div><div class="h" style="margin-top:8px">Change password</div></div>
+  <div><div class="lbl">Current password</div><input type="password" class="fld" value="••••••••••••"></div>
+  <div><div class="lbl">New password</div><input type="password" class="fld" value="••••••••••••••••"><div style="display:flex;gap:4px;margin-top:8px"><span style="flex:1;height:3px;border-radius:2px;background:var(--green)"></span><span style="flex:1;height:3px;border-radius:2px;background:var(--green)"></span><span style="flex:1;height:3px;border-radius:2px;background:var(--green)"></span><span style="flex:1;height:3px;border-radius:2px;background:var(--surface-2)"></span></div><div style="font-size:12px;color:var(--fg3);margin-top:6px">Strong. 16 characters, not in any known breach.</div></div>
+  <div><div class="lbl">Confirm new password</div><input type="password" class="fld" value="••••••••••••••••"></div>
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0"><span style="font-size:14px;color:var(--fg2)">Sign out of other devices</span><span style="width:40px;height:24px;border-radius:999px;background:var(--accent);position:relative"><span style="position:absolute;top:3px;left:19px;width:18px;height:18px;border-radius:999px;background:#faf9f6"></span></span></div>
+  <button class="btn">Update password</button>
+</div></div>
+
+<!-- 7 error -->
+<div style="display:flex;flex-direction:column;gap:9px"><div class="idl"><b>7</b>error.ftl · generic</div>
+<div class="idp" style="padding:36px 28px;gap:20px;min-height:420px;justify-content:center">
+  <div class="eyebrow">Something broke</div>
+  <div class="h">Well, that didn't work.</div>
+  <div style="color:var(--fg2);font-size:15px;line-height:1.6">The sign-in link may have expired, or the page was opened twice. Nothing's lost — start again from the app.</div>
+  <div style="font-family:var(--font-mono);font-size:11px;color:var(--fg3);padding:10px 12px;border-radius:6px;background:var(--surface);border:1px solid var(--border)">error: invalid_request · ref 7f3a-21c</div>
+  <button class="btn2">Back to Ours →</button>
+</div></div>
+
+<!-- 8 session expired -->
+<div style="display:flex;flex-direction:column;gap:9px"><div class="idl"><b>8</b>app interstitial · session expired</div>
+<div class="idp" style="padding:36px 28px;gap:20px;min-height:420px;justify-content:center;align-items:center;text-align:center">
+  <div style="width:40px;height:40px;border-radius:999px;border:1px solid var(--border);border-top-color:var(--accent);animation:none"></div>
+  <div class="h">Signing you back in</div>
+  <div style="color:var(--fg2);font-size:15px;line-height:1.6;max-width:300px">Your session timed out while you were away. Hang on — this device is trusted, so this should be quick.</div>
+  <div style="font-family:var(--font-mono);font-size:11px;color:var(--fg3)">Redirecting to the identity service…</div>
+  <a style="font-size:14px;color:var(--fg2)">Taking too long? Sign in manually →</a>
+</div></div>
+
+<!-- 9 account security -->
+<div style="display:flex;flex-direction:column;gap:9px"><div class="idl"><b>9</b>account console · Security (app links here from Us)</div>
+<div class="idp" style="width:960px;padding:40px 48px 48px;gap:32px">
+  <div style="display:flex;justify-content:space-between;align-items:flex-end"><div><div class="eyebrow">Account · Casey</div><div class="h" style="font-size:44px;margin-top:8px">Security</div></div><a style="font-size:14px;color:var(--fg2)">← Back to Ours</a></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start">
+    <div style="display:flex;flex-direction:column;gap:24px">
+      <div style="border-radius:8px;border:1px solid var(--border);background:var(--surface);padding:24px;display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:17px;font-weight:500">Password</span><span style="font-family:var(--font-mono);font-size:11px;color:var(--fg3)">changed 4 months ago</span></div>
+        <button class="btn2" style="width:auto;align-self:flex-start;height:40px;padding:0 16px;font-size:14px">Change password</button>
+      </div>
+      <div style="border-radius:8px;border:1px solid var(--border);background:var(--surface);padding:24px;display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:17px;font-weight:500">Authenticator app</span><span style="font-family:var(--font-mono);font-size:11px;color:var(--green)">on · Casey's iPhone</span></div>
+        <div style="font-size:14px;color:var(--fg2)">Time-based codes. Re-enrolling replaces the current app — you'll scan a new QR code.</div>
+        <div style="display:flex;gap:8px"><button class="btn2" style="width:auto;height:40px;padding:0 16px;font-size:14px">Re-enroll</button><button class="btn2" style="width:auto;height:40px;padding:0 16px;font-size:14px;color:var(--danger);border-color:var(--border)">Turn off</button></div>
+      </div>
+      <div style="border-radius:8px;border:1px solid var(--border);background:var(--surface);padding:24px;display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:17px;font-weight:500">Recovery codes</span><span style="font-family:var(--font-mono);font-size:11px;color:var(--fg3)">8 of 10 unused</span></div>
+        <div style="font-size:14px;color:var(--fg2)">Regenerating invalidates the old set immediately.</div>
+        <button class="btn2" style="width:auto;align-self:flex-start;height:40px;padding:0 16px;font-size:14px">Regenerate codes</button>
+      </div>
+      <div style="border-radius:8px;border:1px solid var(--border);background:var(--surface);padding:24px;display:flex;flex-direction:column;gap:4px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px"><span style="font-size:17px;font-weight:500">Passkeys</span><a style="font-size:14px">+ Add a passkey</a></div>
+        <sc-for list="{{ passkeys }}" as="k" hint-placeholder-count="2"><div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-top:1px solid var(--border)"><div><div style="font-size:15px">{{ k.name }}</div><div style="font-family:var(--font-mono);font-size:11px;color:var(--fg3);margin-top:2px">{{ k.meta }}</div></div><a style="font-size:13px;color:var(--fg2)">Remove</a></div></sc-for>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:24px">
+      <div style="border-radius:8px;border:1px solid var(--border);background:var(--surface);padding:24px;display:flex;flex-direction:column;gap:4px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px"><span style="font-size:17px;font-weight:500">Signed-in devices</span><a style="font-size:13px;color:var(--danger)">Sign out everywhere else</a></div>
+        <sc-for list="{{ devices }}" as="dv" hint-placeholder-count="3"><div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-top:1px solid var(--border)"><div style="display:flex;gap:12px;align-items:center"><span style="width:8px;height:8px;border-radius:999px;background:{{ dv.dot }}"></span><div><div style="font-size:15px">{{ dv.name }}</div><div style="font-family:var(--font-mono);font-size:11px;color:var(--fg3);margin-top:2px">{{ dv.meta }}</div></div></div><a style="font-size:13px;color:{{ dv.actionColor }};white-space:nowrap;flex:none">{{ dv.action }}</a></div></sc-for>
+      </div>
+      <div style="border-radius:8px;border:1px solid var(--border);background:var(--surface);padding:24px;display:flex;flex-direction:column;gap:4px">
+        <div style="font-size:17px;font-weight:500;margin-bottom:10px">Recent sign-in activity</div>
+        <sc-for list="{{ logins }}" as="l" hint-placeholder-count="5"><div style="display:grid;grid-template-columns:110px 1fr auto;gap:12px;padding:10px 0;border-top:1px solid var(--border);font-size:14px;align-items:center"><span style="font-family:var(--font-mono);font-size:12px;color:var(--fg3)">{{ l.when }}</span><span>{{ l.what }}</span><span style="font-family:var(--font-mono);font-size:11px;color:{{ l.c }}">{{ l.status }}</span></div></sc-for>
+        <div style="font-size:12px;color:var(--fg3);margin-top:8px">Don't recognise something? Change your password and sign out everywhere else.</div>
+      </div>
+    </div>
+  </div>
+</div></div>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;displayFont&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Newsreader&quot;,&quot;Cormorant Garamond&quot;,&quot;Lora&quot;,&quot;Instrument Serif&quot;],&quot;default&quot;:&quot;Newsreader&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Look&quot;},&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;light&quot;,&quot;dark&quot;],&quot;default&quot;:&quot;light&quot;,&quot;tsType&quot;:&quot;'light' | 'dark'&quot;,&quot;section&quot;:&quot;Look&quot;},&quot;herName&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;Yasmim&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;People&quot;}}">
+class Component extends DCLogic {
+  state = { saved: false };
+  renderVals() {
+    const p = this.props, s = this.state;
+    const her = p.herName ?? 'Yasmim';
+    const theme = p.theme ?? 'light';
+    const fontKey = ({ 'Newsreader': 'newsreader', 'Cormorant Garamond': 'cormorant', 'Lora': 'lora' })[p.displayFont ?? 'Newsreader'] || 'instrument';
+    const boxes = ['4', '8', '1', '', '', ''].map((ch, i) => ({ ch, border: i === 3 ? 'var(--fg1)' : 'var(--border)' }));
+    const errBoxes = ['9', '0', '2', '1', '1', '7'].map(ch => ({ ch }));
+    const emptyBoxes = Array.from({ length: 6 }, (_, i) => ({ border: i === 0 ? 'var(--fg1)' : 'var(--border)' }));
+    let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    const qr = Array.from({ length: 441 }, (_, i) => { const x = i % 21, y = Math.floor(i / 21); const inF = (a, b) => x >= a && x < a + 7 && y >= b && y < b + 7; const ring = (a, b) => (x === a || x === a + 6 || y === b || y === b + 6) || (x >= a + 2 && x <= a + 4 && y >= b + 2 && y <= b + 4); let on; if (inF(0, 0)) on = ring(0, 0); else if (inF(14, 0)) on = ring(14, 0); else if (inF(0, 14)) on = ring(0, 14); else on = rnd() > .52; return { c: on ? '#121110' : 'transparent' }; });
+    const codes = ['QH7T-2MKD', 'X9PL-4RWN', 'BC3V-8JSA', 'MT6Y-1ZQE', 'WK2F-7HDR', 'PN8G-3LXC', 'RJ5S-9VBT', 'ZD4A-6NMY', 'FH1W-5KPQ', 'LS7C-2GTX'].map((v, i) => ({ i: String(i + 1).padStart(2, '0'), v }));
+    return {
+      her, theme, fontKey, boxes, errBoxes, emptyBoxes, qr, codes,
+      saved: s.saved, notSaved: !s.saved, toggleSaved: () => this.setState({ saved: !s.saved }), savedBg: s.saved ? 'var(--accent)' : 'transparent', savedBorder: s.saved ? 'var(--accent)' : 'var(--border)', contOp: s.saved ? 1 : .4,
+      passkeys: [{ name: 'Casey\u2019s iPhone', meta: 'added Mar 2, 2026 · last used today' }, { name: 'MacBook Pro · Touch ID', meta: 'added Mar 2, 2026 · last used Sep 4' }],
+      devices: [{ name: 'iPhone · Ours app', meta: 'This device · Asheville, NC · now', dot: 'var(--green)', action: 'Current', actionColor: 'var(--fg3)' }, { name: 'Chrome on macOS', meta: 'Asheville, NC · 2 hours ago', dot: 'var(--fg3)', action: 'Sign out', actionColor: 'var(--fg2)' }, { name: 'Safari on iPad', meta: 'Charlotte, NC · Aug 21', dot: 'var(--fg3)', action: 'Sign out', actionColor: 'var(--fg2)' }],
+      logins: [{ when: 'Today 9:41 PM', what: 'Passkey · iPhone', status: 'ok', c: 'var(--green)' }, { when: 'Sep 4 8:12 AM', what: 'Password + code · Chrome, macOS', status: 'ok', c: 'var(--green)' }, { when: 'Sep 2 11:03 PM', what: 'Password · wrong code ×2', status: 'failed', c: 'var(--danger)' }, { when: 'Aug 21 6:30 PM', what: 'Password + code · Safari, iPad', status: 'ok', c: 'var(--green)' }, { when: 'Aug 19 7:55 AM', what: 'Passkey · MacBook', status: 'ok', c: 'var(--green)' }],
+    };
+  }
+}
+</script>
+</body>
+</html>

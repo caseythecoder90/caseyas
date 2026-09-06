@@ -1,0 +1,59 @@
+# Local infrastructure only. The api runs with `mvn spring-boot:run` and the
+# frontend with `npm run dev`, both against these containers.
+#
+# Credentials below are for a laptop and nothing else.
+services:
+  keycloak-postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: keycloak
+    volumes:
+      - keycloak-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keycloak -d keycloak"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.7.3
+    command: ["start-dev", "--import-realm"]
+    depends_on:
+      keycloak-postgres:
+        condition: service_healthy
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://keycloak-postgres:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: keycloak
+      KC_HTTP_PORT: "8080"
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      # realm placeholders, see keycloak/README.md
+      OURS_APP_URL: http://localhost:5173
+      OURS_WEB_CLIENT_SECRET: local-dev-client-secret
+      OURS_USER1_USERNAME: casey
+      OURS_USER1_PASSWORD: change-me-on-first-login
+      OURS_USER2_USERNAME: her
+      OURS_USER2_PASSWORD: change-me-on-first-login
+    volumes:
+      - ./keycloak/realm:/opt/keycloak/data/import:ro
+    ports:
+      - "8081:8080"
+
+  mongodb:
+    image: mongo:8
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: devpassword
+    volumes:
+      - mongodb:/data/db
+    ports:
+      # 27018 on the host: another project already owns 27017 on this machine
+      - "27018:27017"
+
+volumes:
+  keycloak-postgres:
+  mongodb:

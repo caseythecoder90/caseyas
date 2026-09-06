@@ -1,0 +1,29 @@
+@import "tailwindcss";
+
+/* Placeholder tokens until the Claude Design mockups land (milestone 0).
+   Warm paper, deep ink, one clay accent, a muted sage. */
+@theme {
+  --color-paper: #f6f1ea;
+  --color-paper-deep: #ece4d8;
+  --color-ink: #2b2420;
+  --color-ink-soft: #6f635c;
+  --color-accent: #b5533c;
+  --color-sage: #7d8b6f;
+  --color-night: #1f1b18;
+  --color-night-raised: #2a2521;
+  --font-display: Georgia, "Times New Roman", serif;
+  --font-body: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+html {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+}
+
+@media (prefers-color-scheme: dark) {
+  html {
+    background: var(--color-night);
+    color: var(--color-paper);
+  }
+}

@@ -1,0 +1,27 @@
+# `mvn spring-boot:run -pl api -Dspring-boot.run.profiles=local`
+# against `docker compose up` in the repository root.
+spring:
+  mongodb:
+    # 127.0.0.1, not localhost: on a Windows host with WSL, ::1:27017 can be a relayed
+    # WSL MongoDB and the Java driver tries IPv6 first.
+    uri: mongodb://root:devpassword@127.0.0.1:27018/ours?authSource=admin
+  security:
+    oauth2:
+      client:
+        registration:
+          keycloak:
+            client-secret: local-dev-client-secret
+        provider:
+          keycloak:
+            issuer-uri: http://localhost:8081/realms/ours
+
+server:
+  servlet:
+    session:
+      cookie:
+        # plain http on localhost
+        secure: false
+
+logging:
+  level:
+    dev.ours: DEBUG
