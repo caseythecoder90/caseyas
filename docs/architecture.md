@@ -43,6 +43,8 @@ Same format as the cluster's decision log. Newest at the bottom.
 | 20 | **Two outside services, both being built** | Do everything in-cluster | Map tiles from OpenStreetMap load only when the Map view is opened, and only tile images. "Paste a confirmation" parsing uses the Claude API and is opt-in per paste, because that text leaves your cluster; you decided the convenience is worth it for this one feature and want the hands-on time with the API. Everything else works without either. |
 | 21 | **The first plan is seeded, not typed** | Start with an empty Plans tab | Japan, 4 to 19 February 2027, Tokyo, Hakuba, and Kyoto, home currency USD, local currency JPY. A seed script creates the plan, its destinations, and the default checklists at the end of milestone 2. The flights and lodging are already booked through Expedia, so the real confirmations get entered by hand in milestone 2 and become the first real test of the confirmation parser in milestone 6. |
 | 22 | **Flamingock for MongoDB schema changes, from day one** | Mongock, hand-run scripts, Spring Data index annotations only | Every index, collection, and data migration is a versioned change class in the `common` module with an audited history in Mongo and a distributed lock, so the api and the worker can start at the same time safely. Mongock is in maintenance mode and reaches end of life at the end of 2026; Flamingock is its successor by the same team with the same change-unit idea. Spring Data's `auto-index-creation` stays off so Flamingock is the only thing that touches the schema. |
+| 23 | **The frontend is built from the Claude Design canvases, screens first, data second** | Build each screen only when its milestone's api exists | The design project produced every screen with realistic content, so the whole UI is implemented against a typed mock store in `src/data` that mirrors the canvases' data, and each later milestone swaps the hooks in `src/data/hooks.ts` to the api without touching screens. You and she get the real app to walk through after milestone 1, and the api work in milestones 2 to 6 lands into finished screens. The design sources live in `design/` in the repo, verbatim, as the reference. |
+| 24 | **Fonts and icons are self-hosted packages** | Google Fonts links as in the canvases | The canvases load Newsreader, Inter Tight, and JetBrains Mono from Google Fonts. The app bundles them through `@fontsource` packages and draws icons with `lucide-react`, so the CSP stays at `font-src 'self'` and no request leaves for a third party. |
 
 ## 2. System overview
 
@@ -113,7 +115,9 @@ React 19, TypeScript strict, Vite. Five tabs on mobile: Memories, Plans, Calenda
 | Server state and caching | TanStack Query |
 | Client state (chat, socket, presence) | Zustand |
 | Rich text for memory bodies | Tiptap; body stored as ProseMirror JSON, rendered read-only by Tiptap too |
-| Styling | Tailwind CSS v4 with tokens taken from the Claude Design mockups |
+| Styling | Tailwind CSS v4; the design tokens from the system sheet (paper, ink, terracotta accent, sage, plum, ochre, the note palette) are CSS custom properties mapped into Tailwind's `@theme` |
+| Typefaces and icons | `@fontsource` packages for Newsreader, Inter Tight, and JetBrains Mono; `lucide-react` for the nine item-kind icons and the rest |
+| Mock data during the build-out | `src/data` holds typed mock datasets transcribed from the canvases, a `mockImage` helper that draws placeholder photos as data URIs so no image request leaves the app, and hooks that later milestones point at the api |
 | PWA | `vite-plugin-pwa` (Workbox), custom service worker for push events and offline plan bundles |
 | Photo grid and lightbox | `react-photo-album` + `yet-another-react-lightbox` |
 | Drag and drop (itinerary, checklists, media reorder) | `@dnd-kit/core` |
@@ -527,8 +531,12 @@ Incremental cost lands between $0 and $4 a month.
 
 ```
 caseyas/
-  docs/                      this plan, the design prompt, later the runbook
+  docs/                      this plan, the design prompt, the runbook
+  design/                    the Claude Design canvases, verbatim, plus design/spec/ written from them
   frontend/                  React 19 + TypeScript + Vite PWA
+    src/ui/                  primitives from the system sheet
+    src/data/                types, mock datasets, hooks, mockImage, dates
+    src/features/            memories, plans, chat, calendar, us; each owns its directory
   backend/
     pom.xml                  parent, Java 25, Spring Boot 4.1.1
     common/                  documents, repositories, Kafka event records, R2 client, plan item details
@@ -558,7 +566,7 @@ Each one ends with something you can show her. Plans moved up to milestone 2 bec
 | # | Milestone | Ends when |
 |---|---|---|
 | 0 | **Design** | Claude Design mockups exist, including the Plans screens and the Keycloak pages; palette, type, and components extracted into Tailwind tokens |
-| 1 | **Foundation and Keycloak** | Monorepo, CI, both namespaces, TLS on both hosts. Keycloak up with the `ours` realm; both of you sign in with password + OTP, save recovery codes, and add a passkey. The api authenticates through `oauth2Login`, Flamingock runs its first change and Mongo holds two `users` docs, and the app shell shows the five tabs, all empty. Default Keycloak theme is acceptable here. |
+| 1 | **Foundation and Keycloak** | Monorepo, CI, both namespaces, TLS on both hosts. Keycloak up with the `ours` realm; both of you sign in with password + OTP, save recovery codes, and add a passkey. The api authenticates through `oauth2Login`, Flamingock runs its first change and Mongo holds two `users` docs, and the app shows every screen from the design canvases against the mock store, decision 23. Default Keycloak theme is acceptable here. |
 | 2 | **Plans and the media foundation** | Items of every kind, ideas with votes and link previews, itinerary drag and drop, checklists, budget, documents. Presigned uploads to R2, Kafka and the worker land here doing photo and PDF thumbnails. Plan spans and booked items show on the calendar tab in a read-only month view. Offline bundle and Today mode. Ends with the seed script creating "Japan 2027", 4 to 19 February, Tokyo, Hakuba, and Kyoto, USD home and JPY local, with the default checklists, and with the real Expedia flight and lodging confirmations entered by hand. |
 | 3 | **Memories and photos** | Composer, timeline, detail, lightbox, the two-perspective view. "Turn this plan into a memory" hand-off. |
 | 4 | **Chat** | WebSocket delivery, persistence, photos in chat, reactions, replies, read receipts, presence, Web Push when the other person is away, "Save to plan" and "Save to memories", live plan updates over the same socket. |

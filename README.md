@@ -9,6 +9,7 @@ A private, two-person app: memory journal, trip and event planner, one live chat
 ## Layout
 
 ```
+design/        the Claude Design canvases, verbatim, and the specs written from them
 frontend/      React 19 + TypeScript + Vite PWA, served by nginx in production
 backend/       Maven multi-module, Java 25, Spring Boot 4.1
   common/      Mongo documents, repositories, Flamingock change classes, shared contracts
