@@ -1,95 +1,86 @@
-import { useQuery } from '@tanstack/react-query'
-import { NavLink, Route, Routes } from 'react-router'
-import { api, csrfToken, type Me } from './api'
+// App root: theme + toast providers, the /api/me gate (401 -> the
+// "Signing you back in" interstitial while api.ts redirects to Keycloak), then
+// the shell with the route table.
 
-const tabs = [
-  { to: '/', label: 'Memories' },
-  { to: '/plans', label: 'Plans' },
-  { to: '/calendar', label: 'Calendar' },
-  { to: '/chat', label: 'Chat' },
-  { to: '/us', label: 'Us' },
-] as const
+import { useLocation } from 'react-router'
+import { ApiError } from './api'
+import { paths } from './paths'
+import { AppRoutes } from './routes'
+import { SessionProvider, useMe } from './session'
+import SessionExpired from './shell/SessionExpired'
+import { Shell } from './shell/Shell'
+import { ThemeProvider } from './theme'
+import { Button, ToastProvider } from './ui'
 
-function useMe() {
-  return useQuery({ queryKey: ['me'], queryFn: () => api<Me>('/api/me') })
-}
-
-function Empty({ title, line }: { title: string; line: string }) {
+function Splash() {
   return (
-    <section className="flex min-h-[60vh] flex-col items-center justify-center gap-3 px-6 text-center">
-      <h1 className="font-display text-3xl">{title}</h1>
-      <p className="max-w-sm text-ink-soft dark:text-paper-deep">{line}</p>
-    </section>
+    <div className="ours idp-page">
+      <span style={{ fontFamily: 'var(--font-serif)', fontSize: 30, lineHeight: 1 }}>ours</span>
+    </div>
   )
 }
 
-function Us({ me }: { me: Me }) {
+function LoadError({ message, retry }: { message: string; retry: () => void }) {
   return (
-    <section className="mx-auto flex max-w-md flex-col gap-6 px-6 py-10">
-      <h1 className="font-display text-3xl">Us</h1>
-      <p>
-        Signed in as <span className="font-medium">{me.displayName}</span>
-        <span className="text-ink-soft dark:text-paper-deep"> ({me.username})</span>.
-      </p>
-      {/* A real form POST so the browser follows the api's redirect to Keycloak's
-          end-session endpoint and back. fetch() could not follow that cross-site hop. */}
-      <form method="post" action="/logout">
-        <input type="hidden" name="_csrf" value={csrfToken() ?? ''} />
-        <button
-          type="submit"
-          className="rounded-lg border border-ink/20 px-4 py-2 text-sm hover:bg-paper-deep dark:border-paper/20 dark:hover:bg-night-raised"
+    <div className="ours idp-page">
+      <div className="idp" style={{ minHeight: 420, padding: '36px 28px', gap: 20, justifyContent: 'center' }}>
+        <div className="eyebrow">Something broke</div>
+        <h1 className="h" style={{ margin: 0 }}>
+          Well, that didn't work.
+        </h1>
+        <p style={{ color: 'var(--fg2)', fontSize: 15, lineHeight: 1.6, margin: 0 }}>
+          The app could not reach the api. Nothing's lost — try again in a moment.
+        </p>
+        <div
+          style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: 11,
+            color: 'var(--fg3)',
+            padding: '10px 12px',
+            borderRadius: 6,
+            background: 'var(--surface)',
+            border: '1px solid var(--border)',
+            overflowWrap: 'anywhere',
+          }}
         >
-          Sign out
-        </button>
-      </form>
-    </section>
+          {message}
+        </div>
+        <Button variant="secondary" size="sheet" full onClick={retry}>
+          Try again →
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+function Gate() {
+  const { pathname } = useLocation()
+  const me = useMe()
+
+  if (pathname === paths.sessionExpired) return <SessionExpired />
+  if (me.isPending) return <Splash />
+  if (me.isError) {
+    // a 401 means api.ts has already sent the browser to Keycloak
+    const status = me.error instanceof ApiError ? me.error.status : 0
+    if (status === 401) return <SessionExpired alreadyRedirecting />
+    return <LoadError message={`error: ${me.error.message || 'network'}`} retry={() => void me.refetch()} />
+  }
+
+  return (
+    <SessionProvider me={me.data}>
+      <Shell>
+        <AppRoutes />
+      </Shell>
+    </SessionProvider>
   )
 }
 
 export default function App() {
-  const me = useMe()
-
-  if (me.isPending || me.isError) {
-    // isError with a 401 means api.ts is already redirecting to Keycloak
-    return (
-      <main className="flex min-h-screen items-center justify-center">
-        <p className="font-display text-2xl">{me.isError ? 'Signing you in…' : 'Ours'}</p>
-      </main>
-    )
-  }
-
-  const linkClass = ({ isActive }: { isActive: boolean }) =>
-    `rounded-lg px-3 py-2 text-sm ${isActive ? 'bg-paper-deep font-medium dark:bg-night-raised' : 'text-ink-soft dark:text-paper-deep'}`
-
   return (
-    <div className="flex min-h-screen">
-      <nav className="hidden w-56 shrink-0 flex-col gap-1 border-r border-ink/10 p-4 md:flex dark:border-paper/10">
-        <span className="mb-4 px-3 font-display text-2xl">Ours</span>
-        {tabs.map((t) => (
-          <NavLink key={t.to} to={t.to} end={t.to === '/'} className={linkClass}>
-            {t.label}
-          </NavLink>
-        ))}
-      </nav>
-
-      <main className="flex-1 pb-20 md:pb-0">
-        <Routes>
-          <Route path="/" element={<Empty title="Memories" line="Nothing here yet. Start with how you met." />} />
-          <Route path="/plans" element={<Empty title="Plans" line="Where to first?" />} />
-          <Route path="/calendar" element={<Empty title="Calendar" line="Nothing on the calendar yet." />} />
-          <Route path="/chat" element={<Empty title="Chat" line="Say something." />} />
-          <Route path="/us" element={<Us me={me.data} />} />
-          <Route path="*" element={<Empty title="Not here" line="That page does not exist." />} />
-        </Routes>
-      </main>
-
-      <nav className="fixed inset-x-0 bottom-0 flex justify-around border-t border-ink/10 bg-paper pb-[env(safe-area-inset-bottom)] md:hidden dark:border-paper/10 dark:bg-night">
-        {tabs.map((t) => (
-          <NavLink key={t.to} to={t.to} end={t.to === '/'} className={linkClass}>
-            {t.label}
-          </NavLink>
-        ))}
-      </nav>
-    </div>
+    <ThemeProvider>
+      <ToastProvider>
+        <Gate />
+      </ToastProvider>
+    </ThemeProvider>
   )
 }

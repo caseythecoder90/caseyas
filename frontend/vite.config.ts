@@ -22,8 +22,9 @@ export default defineConfig({
         name: 'Ours',
         short_name: 'Ours',
         description: 'Our memories, plans, and days.',
-        theme_color: '#f6f1ea',
-        background_color: '#f6f1ea',
+        // paper; the app swaps the theme-color meta to ink (#121110) in dark mode
+        theme_color: '#faf9f6',
+        background_color: '#faf9f6',
         display: 'standalone',
         start_url: '/',
         icons: [{ src: '/icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' }],

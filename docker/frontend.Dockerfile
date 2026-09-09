@@ -12,4 +12,5 @@ RUN rm /etc/nginx/conf.d/default.conf
 COPY docker/nginx/default.conf.template /etc/nginx/templates/default.conf.template
 COPY --from=build /ui/dist /usr/share/nginx/html
 ENV AUTH_HOST=auth.caseylovesyas.com
+ENV MEDIA_HOST=media.invalid
 EXPOSE 80

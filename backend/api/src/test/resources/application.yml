@@ -19,6 +19,17 @@ spring:
             user-info-uri: http://keycloak.test/realms/ours/protocol/openid-connect/userinfo
             user-name-attribute: preferred_username
 
+  kafka:
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JacksonJsonSerializer
+    consumer:
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JacksonJsonDeserializer
+      properties:
+        spring.json.trusted.packages: dev.ours.common.events
+
 server:
   servlet:
     session:

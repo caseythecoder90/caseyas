@@ -5,6 +5,8 @@ spring:
     # 127.0.0.1, not localhost: on a Windows host with WSL, ::1:27017 can be a relayed
     # WSL MongoDB and the Java driver tries IPv6 first.
     uri: mongodb://root:devpassword@127.0.0.1:27018/ours?authSource=admin
+  kafka:
+    bootstrap-servers: 127.0.0.1:29092
   security:
     oauth2:
       client:
@@ -14,6 +16,18 @@ spring:
         provider:
           keycloak:
             issuer-uri: http://localhost:8081/realms/ours
+
+# MinIO from docker-compose. Internal and public endpoints differ only in name so
+# that presigned URLs the browser uses say localhost.
+ours:
+  storage:
+    endpoint: http://127.0.0.1:9000
+    public-endpoint: http://localhost:9000
+    region: auto
+    bucket: ours
+    access-key: ours-dev
+    secret-key: ours-dev-secret
+    path-style: true
 
 server:
   servlet:

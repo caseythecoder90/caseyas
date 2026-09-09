@@ -138,12 +138,13 @@ jobs:
           KUBECONFIG_B64: ${{ secrets.KUBE_CONFIG_OURS }}
         run: |
           mkdir -p ~/.kube && echo "$KUBECONFIG_B64" | base64 -d > ~/.kube/config && chmod 600 ~/.kube/config
-          TAG=${GITHUB_SHA::7}
-          kubectl -n ours set image deploy/frontend frontend=${IMAGE_BASE}-frontend:$TAG
-          kubectl -n ours set image deploy/api api=${IMAGE_BASE}-api:$TAG
-          # milestone 2: kubectl -n ours set image deploy/worker worker=${IMAGE_BASE}-worker:$TAG
+          TAG="${GITHUB_SHA::7}"
+          kubectl -n ours set image deploy/frontend "frontend=${IMAGE_BASE}-frontend:${TAG}"
+          kubectl -n ours set image deploy/api "api=${IMAGE_BASE}-api:${TAG}"
+          kubectl -n ours set image deploy/worker "worker=${IMAGE_BASE}-worker:${TAG}"
           kubectl -n ours rollout status deploy/frontend --timeout=180s
           kubectl -n ours rollout status deploy/api --timeout=300s
+          kubectl -n ours rollout status deploy/worker --timeout=300s
 
       - name: Roll out keycloak
         if: steps.check.outputs.keycloak == 'true' && steps.kc.outputs.changed == 'true'
@@ -151,8 +152,8 @@ jobs:
           KUBECONFIG_B64: ${{ secrets.KUBE_CONFIG_KEYCLOAK }}
         run: |
           mkdir -p ~/.kube && echo "$KUBECONFIG_B64" | base64 -d > ~/.kube/config && chmod 600 ~/.kube/config
-          TAG=${GITHUB_SHA::7}
-          kubectl -n keycloak set image deploy/keycloak keycloak=${IMAGE_BASE}-keycloak:$TAG
+          TAG="${GITHUB_SHA::7}"
+          kubectl -n keycloak set image deploy/keycloak "keycloak=${IMAGE_BASE}-keycloak:${TAG}"
           kubectl -n keycloak rollout status deploy/keycloak --timeout=300s
 
       - name: Show pod state if the rollout failed

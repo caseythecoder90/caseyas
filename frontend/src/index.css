@@ -1,29 +1,619 @@
 @import "tailwindcss";
 
-/* Placeholder tokens until the Claude Design mockups land (milestone 0).
-   Warm paper, deep ink, one clay accent, a muted sage. */
-@theme {
-  --color-paper: #f6f1ea;
-  --color-paper-deep: #ece4d8;
-  --color-ink: #2b2420;
-  --color-ink-soft: #6f635c;
-  --color-accent: #b5533c;
-  --color-sage: #7d8b6f;
-  --color-night: #1f1b18;
-  --color-night-raised: #2a2521;
-  --font-display: Georgia, "Times New Roman", serif;
-  --font-body: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+/* Self-hosted fonts (CSP font-src 'self'). Variable faces cover Newsreader 400/500
+   + italic 400, Inter Tight 400/500/600 and JetBrains Mono 400/500.
+   The design's alternate display fonts (Cormorant Garamond, Lora, Instrument Serif)
+   are intentionally not shipped: data-font is fixed to "newsreader". */
+@import "@fontsource-variable/newsreader/index.css";
+@import "@fontsource-variable/newsreader/wght-italic.css";
+@import "@fontsource-variable/inter-tight/index.css";
+@import "@fontsource-variable/jetbrains-mono/index.css";
+
+/* ------------------------------------------------------------------ */
+/* 1. Design tokens - design/spec/tokens-and-components.md section 1   */
+/* ------------------------------------------------------------------ */
+
+:root {
+  color-scheme: light;
+  --bg: #faf9f6;
+  --surface: #f0ede5;
+  --surface-2: #e8e4d9;
+  --fg1: #121110;
+  --fg2: #5a574f;
+  --fg3: #8a857a;
+  --border: #d4d0c5;
+  --accent: #c84b31;
+  --accent-soft: rgba(200, 75, 49, .12);
+  --green: #78866a;
+  --green-soft: rgba(120, 134, 106, .16);
+  --plum: #7a5c7a;
+  --ochre: #b58b3a;
+  --plum-soft: rgba(122, 92, 122, .16);
+  --ochre-soft: rgba(181, 139, 58, .16);
+  --danger: #b33e26;
+  --n1: #f6ecd6;
+  --n2: #e6ebdc;
+  --n3: #f1ddd2;
+  --n4: #e4e2ea;
+  --font-serif: 'Newsreader Variable', 'Newsreader', Georgia, serif;
+  --font-sans: 'Inter Tight Variable', 'Inter Tight', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, monospace;
+  --shadow-md: 0 8px 24px rgba(40, 30, 20, .12);
+
+  /* Literals that are deliberately NOT theme tokens (section 1.3): text on
+     accent/ink fills stays paper-white in both themes. */
+  --paper: #faf9f6;
+  --ink: #121110;
+  --scrim: rgba(0, 0, 0, .6);
+
+  /* Motion (section 4): 120ms hover/press, 200ms sheets and segment switches,
+     400ms screen transitions. Opacity + <= 8px translate. */
+  --ease: cubic-bezier(.22, 1, .36, 1);
+  --dur-press: 120ms;
+  --dur-sheet: 200ms;
+  --dur-screen: 400ms;
 }
 
-html {
-  background: var(--color-paper);
-  color: var(--color-ink);
-  font-family: var(--font-body);
+[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #121110;
+  --surface: #1a1917;
+  --surface-2: #23211e;
+  --fg1: #faf9f6;
+  --fg2: #a8a49a;
+  --fg3: #6e6a61;
+  --border: #2e2b26;
+  --accent: #d4593a;
+  --accent-soft: rgba(212, 89, 58, .16);
+  --green: #8a9a78;
+  --green-soft: rgba(138, 154, 120, .18);
+  --plum: #a889a8;
+  --ochre: #cfa65a;
+  --danger: #e26a4a;
+  --n1: #2b2519;
+  --n2: #222619;
+  --n3: #2c201b;
+  --n4: #232229;
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, .4);
 }
 
 @media (prefers-color-scheme: dark) {
-  html {
-    background: var(--color-night);
-    color: var(--color-paper);
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #121110;
+    --surface: #1a1917;
+    --surface-2: #23211e;
+    --fg1: #faf9f6;
+    --fg2: #a8a49a;
+    --fg3: #6e6a61;
+    --border: #2e2b26;
+    --accent: #d4593a;
+    --accent-soft: rgba(212, 89, 58, .16);
+    --green: #8a9a78;
+    --green-soft: rgba(138, 154, 120, .18);
+    --plum: #a889a8;
+    --ochre: #cfa65a;
+    --danger: #e26a4a;
+    --n1: #2b2519;
+    --n2: #222619;
+    --n3: #2c201b;
+    --n4: #232229;
+    --shadow-md: 0 8px 24px rgba(0, 0, 0, .4);
   }
+}
+
+/* ------------------------------------------------------------------ */
+/* 2. Tailwind v4 theme: utilities that read the tokens               */
+/*    bg-bg, bg-surface, bg-surface-2, text-fg1/2/3, border-border,    */
+/*    bg-accent, bg-accent-soft, text-green, bg-green-soft, text-plum,  */
+/*    text-ochre, text-danger, bg-n1..n4, text-paper, bg-ink,           */
+/*    font-serif, font-sans, font-mono, shadow-md                       */
+/* ------------------------------------------------------------------ */
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-fg1: var(--fg1);
+  --color-fg2: var(--fg2);
+  --color-fg3: var(--fg3);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-green: var(--green);
+  --color-green-soft: var(--green-soft);
+  --color-plum: var(--plum);
+  --color-plum-soft: var(--plum-soft);
+  --color-ochre: var(--ochre);
+  --color-ochre-soft: var(--ochre-soft);
+  --color-danger: var(--danger);
+  --color-n1: var(--n1);
+  --color-n2: var(--n2);
+  --color-n3: var(--n3);
+  --color-n4: var(--n4);
+  --color-paper: #faf9f6;
+  --color-ink: #121110;
+  --shadow-md: var(--shadow-md);
+  --ease-ours: var(--ease);
+}
+
+@theme {
+  --font-serif: 'Newsreader Variable', 'Newsreader', Georgia, serif;
+  --font-sans: 'Inter Tight Variable', 'Inter Tight', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, monospace;
+  --default-font-family: 'Inter Tight Variable', 'Inter Tight', system-ui, sans-serif;
+  --default-mono-font-family: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, monospace;
+}
+
+/* ------------------------------------------------------------------ */
+/* 3. Global base rules (section 2) - layered so utilities still win   */
+/* ------------------------------------------------------------------ */
+
+@layer base {
+  html {
+    background: var(--bg);
+    color: var(--fg1);
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg1);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  #root {
+    min-height: 100dvh;
+  }
+  a {
+    color: var(--accent);
+    text-decoration: none;
+  }
+  a:hover {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  input, button, textarea, select {
+    font: inherit;
+  }
+  input::placeholder, textarea::placeholder {
+    color: var(--fg3);
+  }
+  input:focus, textarea:focus, select:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  button:not(:disabled) {
+    cursor: pointer;
+  }
+  button:disabled {
+    cursor: not-allowed;
+  }
+  button:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* 4. Prototype classes (section 2.3), transcribed verbatim, plus the  */
+/*    variants the sheet spells out inline. There is no .scr class in  */
+/*    any design file; mobile screens are inline-styled containers.    */
+/* ------------------------------------------------------------------ */
+
+@layer components {
+  /* the app root: theme scope, hidden scrollbars */
+  .ours {
+    background: var(--bg);
+    color: var(--fg1);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 1.5;
+    scrollbar-width: none;
+  }
+  .ours ::-webkit-scrollbar { display: none; }
+  .ours * { scrollbar-width: none; }
+
+  /* system-sheet section panel (12px hero panel); its h2 is the canonical eyebrow */
+  .sec {
+    background: var(--bg);
+    color: var(--fg1);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  .sec h2 {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--fg3);
+    font-weight: 500;
+  }
+  .sw {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--fg2);
+  }
+  .sw span {
+    height: 44px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+  }
+
+  /* buttons (section 5) */
+  .btn {
+    height: 44px;
+    padding: 0 16px;
+    border-radius: 8px;
+    font-weight: 500;
+    font-size: 14px;
+    cursor: pointer;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--fg1);
+  }
+  .btn-primary { border-color: var(--accent); background: var(--accent); color: #faf9f6; }
+  .btn-secondary { border-color: var(--border); background: transparent; color: var(--fg1); }
+  .btn-quiet { border-color: transparent; background: transparent; color: var(--fg2); }
+  .btn-destructive { border-color: var(--border); background: transparent; color: var(--danger); }
+  .btn-ink { height: 48px; border: none; background: var(--fg1); color: var(--bg); font-size: 15px; }
+  .btn-over-photo { height: 36px; padding: 0 14px; border: none; background: rgba(18, 17, 16, .5); color: #faf9f6; font-size: 13px; }
+  .btn:disabled, .btn-disabled { opacity: .4; cursor: not-allowed; }
+  .btn-dense { height: 36px; padding: 0 12px; font-size: 13px; }
+  .btn-dense-lg { height: 40px; }
+  .btn-sheet { height: 48px; font-size: 15px; }
+
+  /* chips (section 7) */
+  .chip {
+    height: 30px;
+    padding: 0 12px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--fg2);
+    white-space: nowrap;
+    background: transparent;
+  }
+  .chip-md { height: 32px; font-weight: 500; }
+  .chip-selected { background: var(--fg1); color: var(--bg); border-color: var(--fg1); }
+  .chip-accent { border-color: var(--accent); background: var(--accent-soft); color: var(--fg1); }
+  .chip-add { border-style: dashed; color: var(--fg3); }
+
+  /* mono status / kind pill (section 8) */
+  .kind {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--fg3);
+    border: 1px solid var(--border);
+    padding: 2px 5px;
+    border-radius: 3px;
+    display: inline-block;
+    line-height: normal;
+    white-space: nowrap;
+  }
+  .kind-planning, .kind-underway { color: var(--fg1); border-color: var(--fg1); }
+  .kind-booked, .kind-decided { color: var(--green); border-color: var(--green); }
+  .kind-shortlisted { color: var(--accent); border-color: var(--accent); }
+  .kind-card { font-size: 10px; color: var(--fg2); padding: 3px 6px; border-radius: 4px; }
+  .kind-header { font-size: 10px; letter-spacing: .12em; color: var(--fg1); padding: 3px 7px; border-radius: 4px; }
+
+  .card {
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    overflow: hidden;
+  }
+  .note {
+    font-size: 12px;
+    color: var(--fg3);
+  }
+
+  /* eyebrow (section 3) and the identity-page heading */
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--fg3);
+  }
+  .eyebrow-sm { font-size: 10px; }
+  .h {
+    font-family: var(--font-serif);
+    font-size: 34px;
+    line-height: 1.05;
+    font-weight: 400;
+  }
+
+  /* identity-page card + fields (identity-pages.md section 1) */
+  .idp {
+    width: 420px;
+    max-width: 100%;
+    background: var(--bg);
+    color: var(--fg1);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 1.5;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .fld {
+    height: 48px;
+    padding: 0 14px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--fg1);
+    font-size: 15px;
+    width: 100%;
+  }
+  .btn2 {
+    height: 48px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--fg1);
+    font-weight: 500;
+    font-size: 15px;
+    cursor: pointer;
+    width: 100%;
+    white-space: nowrap;
+  }
+  .lbl {
+    font-size: 13px;
+    color: var(--fg2);
+    margin-bottom: 6px;
+  }
+
+  /* photo treatments (section 12 / 16) */
+  .photo { filter: sepia(.08) saturate(.88); }
+  .avatar-photo { filter: sepia(.2) saturate(.6); }
+
+  /* blurred paper for the tab bar and sticky month headers */
+  .blur-paper {
+    background: color-mix(in oklab, var(--bg), transparent 12%);
+    backdrop-filter: blur(12px) saturate(1.2);
+    -webkit-backdrop-filter: blur(12px) saturate(1.2);
+  }
+  .blur-paper-15 {
+    background: color-mix(in oklab, var(--bg), transparent 15%);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  .hide-scrollbar { scrollbar-width: none; }
+  .hide-scrollbar::-webkit-scrollbar { display: none; }
+
+  /* ---- app shell (App.tsx / shell/*) ----
+     Mobile: a 100dvh column, the main pane scrolls, the tab bar sits absolute
+     at the bottom (screens reserve 110px on their last block). Anything a
+     screen positions absolutely (the FAB at bottom:104px) is positioned
+     against .ours-shell, like the phone root in the prototype.
+     Desktop (>= md): 240px sidebar | main, per desktop.md. */
+  .ours-shell {
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+    background: var(--bg);
+    color: var(--fg1);
+  }
+  .ours-main {
+    flex: 1;
+    min-height: 0;
+    min-width: 0;
+    overflow: auto;
+    position: relative;
+    padding-top: env(safe-area-inset-top, 0px);
+    display: flex;
+    flex-direction: column;
+  }
+  /* 400ms screen transition (opacity only so absolutely positioned children keep their containing block) */
+  .ours-main > * {
+    animation: ours-fade-in var(--dur-screen) var(--ease);
+  }
+  .sidebar {
+    display: none;
+  }
+  .tabbar {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 88px;
+    padding: 8px 8px 30px;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    background: color-mix(in oklab, var(--bg), transparent 12%);
+    backdrop-filter: blur(12px) saturate(1.2);
+    -webkit-backdrop-filter: blur(12px) saturate(1.2);
+    border-top: 1px solid var(--border);
+    z-index: 6;
+  }
+  .tabbar a, .tabbar a:hover {
+    text-decoration: none;
+  }
+  .sidebar a, .sidebar a:hover {
+    text-decoration: none;
+  }
+  @media (min-width: 48rem) {
+    .ours-shell {
+      display: grid;
+      grid-template-columns: 240px 1fr;
+      grid-template-rows: minmax(0, 1fr);
+    }
+    .ours-main { padding-top: 0; }
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+      padding: 28px 20px;
+      border-right: 1px solid var(--border);
+      background: var(--surface);
+      min-height: 0;
+      overflow: auto;
+    }
+    .tabbar { display: none; }
+  }
+
+  /* identity-page card fills the viewport on narrow screens (identity-pages.md, SPA interstitial) */
+  .idp-page {
+    min-height: 100dvh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg);
+    color: var(--fg1);
+    font-family: var(--font-sans);
+  }
+  @media (max-width: 460px) {
+    .idp-page > .idp {
+      border: none;
+      border-radius: 0;
+      width: 100%;
+      min-height: 100dvh;
+    }
+  }
+
+  /* bottom sheet chrome (section 14, mobile-d-sheets.md section 0) */
+  .sheet-scrim {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, .6);
+    z-index: 20;
+    animation: ours-fade-in var(--dur-sheet) var(--ease) both;
+  }
+  .sheet-scrim[data-closing] { animation-name: ours-fade-out; }
+  .sheet-panel {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 21;
+    background: var(--bg);
+    color: var(--fg1);
+    border-radius: 12px 12px 0 0;
+    padding: 12px 20px 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    border-top: 1px solid var(--border);
+    max-height: 100dvh;
+    animation: ours-rise-in var(--dur-sheet) var(--ease) both;
+  }
+  .sheet-panel[data-closing] { animation-name: ours-rise-out; }
+  .sheet-panel[data-variant="tall"] {
+    top: 80px;
+    padding: 0;
+    gap: 0;
+    max-height: none;
+  }
+  .sheet-panel[data-variant="dialog"] {
+    left: 20px;
+    right: 20px;
+    bottom: auto;
+    top: 50%;
+    transform: translateY(-50%);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 24px;
+    gap: 14px;
+    box-shadow: var(--shadow-md);
+    animation-name: ours-fade-in;
+  }
+  .sheet-panel[data-variant="dialog"][data-closing] { animation-name: ours-fade-out; }
+  @media (min-width: 48rem) {
+    .sheet-panel[data-variant="bottom"], .sheet-panel[data-variant="tall"] {
+      left: 50%;
+      right: auto;
+      width: min(100%, 480px);
+      transform: translateX(-50%);
+    }
+    .sheet-panel[data-variant="dialog"] {
+      left: 50%;
+      right: auto;
+      width: min(calc(100% - 40px), 480px);
+      transform: translate(-50%, -50%);
+    }
+  }
+  .sheet-handle {
+    width: 36px;
+    height: 4px;
+    border-radius: 999px;
+    background: var(--border);
+    margin: 0 auto;
+    flex: none;
+  }
+
+  /* toast host (section 11): above the tab bar on mobile */
+  .toast-host {
+    position: fixed;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: 104px;
+    z-index: 8;
+    width: max-content;
+    max-width: calc(100% - 24px);
+    animation: ours-rise-in var(--dur-sheet) var(--ease) both;
+  }
+  @media (min-width: 48rem) {
+    .toast-host { bottom: 24px; }
+  }
+
+  .spin { animation: ours-spin 900ms linear infinite; }
+}
+
+/* ------------------------------------------------------------------ */
+/* 5. Motion                                                          */
+/* ------------------------------------------------------------------ */
+
+@keyframes ours-spin { to { transform: rotate(360deg); } }
+@keyframes ours-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ours-fade-out { from { opacity: 1; } to { opacity: 0; } }
+@keyframes ours-rise-in { from { opacity: 0; translate: 0 8px; } to { opacity: 1; translate: 0 0; } }
+@keyframes ours-rise-out { from { opacity: 1; translate: 0 0; } to { opacity: 0; translate: 0 8px; } }
+@keyframes ours-screen-in { from { opacity: 0; translate: 0 6px; } to { opacity: 1; translate: 0 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-press: 0ms;
+    --dur-sheet: 0ms;
+    --dur-screen: 0ms;
+  }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .spin { animation: none; }
 }

@@ -1,0 +1,16 @@
+# Keeps the image build contexts small: the Dockerfiles copy only what they name.
+.git
+.github
+.claude
+.idea
+docs
+design
+**/node_modules
+**/dist
+**/dev-dist
+**/target
+**/*.log
+.env
+.env.*
+*.local.md
+docker-compose.yml

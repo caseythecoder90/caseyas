@@ -3,7 +3,11 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import App from './App'
+import { applyStoredTheme } from './theme'
 import './index.css'
+
+// stamp data-theme before the first paint so a stored dark choice never flashes paper
+applyStoredTheme()
 
 const queryClient = new QueryClient({
   defaultOptions: {

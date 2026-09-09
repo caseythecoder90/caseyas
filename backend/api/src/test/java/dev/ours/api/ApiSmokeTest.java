@@ -1,28 +1,22 @@
 package dev.ours.api;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.hasItem;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.oidcLogin;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import dev.ours.common.user.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.test.web.servlet.MockMvc;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.mongodb.MongoDBContainer;
 
 /** The context starts, Flamingock runs against a real Mongo, and the security posture holds. */
-@SpringBootTest
-@AutoConfigureMockMvc
-@Testcontainers
-class ApiSmokeTest {
-
-  @Container @ServiceConnection
-  static final MongoDBContainer mongo = new MongoDBContainer("mongo:8");
+class ApiSmokeTest extends AbstractIntegrationTest {
 
   @Autowired MockMvc mvc;
+  @Autowired UserRepository users;
 
   @Test
   void healthIsOpen() throws Exception {
@@ -38,5 +32,60 @@ class ApiSmokeTest {
   @Test
   void browserNavigationIsRedirectedToKeycloak() throws Exception {
     mvc.perform(get("/somewhere").accept("text/html")).andExpect(status().is3xxRedirection());
+  }
+
+  @Test
+  void firstSignInCreatesTheUserDocument() throws Exception {
+    var login =
+        oidcLogin()
+            .idToken(
+                t ->
+                    t.subject("kc-sub-casey")
+                        .claim("preferred_username", "casey")
+                        .claim("name", "Casey Quinn"));
+
+    mvc.perform(get("/api/me").with(login))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.username").value("casey"))
+        .andExpect(jsonPath("$.displayName").value("Casey Quinn"));
+
+    var stored = users.findByKeycloakId("kc-sub-casey");
+    assertThat(stored).isPresent();
+    assertThat(stored.get().getUsername()).isEqualTo("casey");
+
+    // a second call updates, never duplicates
+    mvc.perform(get("/api/me").with(login)).andExpect(status().isOk());
+    assertThat(users.findAll().stream().filter(u -> "kc-sub-casey".equals(u.getKeycloakId())))
+        .hasSize(1);
+
+    mvc.perform(get("/api/users").with(login))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$[*].username", hasItem("casey")));
+  }
+
+  @Test
+  void aRecreatedRealmRelinksTheUserByUsername() throws Exception {
+    var before =
+        oidcLogin().idToken(t -> t.subject("old-subject").claim("preferred_username", "relink-me"));
+    mvc.perform(get("/api/me").with(before)).andExpect(status().isOk());
+    var originalId = users.findByUsername("relink-me").orElseThrow().getId();
+
+    var after =
+        oidcLogin().idToken(t -> t.subject("new-subject").claim("preferred_username", "relink-me"));
+    mvc.perform(get("/api/me").with(after))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.id").value(originalId));
+
+    assertThat(users.findByKeycloakId("old-subject")).isEmpty();
+    assertThat(users.findByKeycloakId("new-subject").orElseThrow().getId()).isEqualTo(originalId);
+    assertThat(users.findAll().stream().filter(u -> "relink-me".equals(u.getUsername())))
+        .hasSize(1);
+  }
+
+  @Test
+  void configPointsAtTheRealmAccountConsole() throws Exception {
+    mvc.perform(get("/api/config").with(oidcLogin()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.accountUrl").value("http://keycloak.test/realms/ours/account"));
   }
 }

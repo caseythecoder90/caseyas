@@ -10,6 +10,11 @@ spring:
     mongodb:
       # Flamingock owns every index and collection. See common/.../changes.
       auto-index-creation: false
+  kafka:
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:29092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JacksonJsonSerializer
   security:
     oauth2:
       client:
@@ -37,6 +42,17 @@ server:
         http-only: true
         secure: true
         same-site: strict
+
+# Object storage: R2 in production, MinIO locally, both S3 (decision 5).
+ours:
+  storage:
+    endpoint: ${OURS_STORAGE_ENDPOINT}
+    public-endpoint: ${OURS_STORAGE_PUBLIC_ENDPOINT}
+    region: ${OURS_STORAGE_REGION:auto}
+    bucket: ${OURS_STORAGE_BUCKET}
+    access-key: ${OURS_STORAGE_ACCESS_KEY}
+    secret-key: ${OURS_STORAGE_SECRET_KEY}
+    path-style: ${OURS_STORAGE_PATH_STYLE:true}
 
 management:
   endpoints:

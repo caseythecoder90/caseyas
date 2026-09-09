@@ -23,6 +23,13 @@
         <type>pom</type>
         <scope>import</scope>
       </dependency>
+      <dependency>
+        <groupId>software.amazon.awssdk</groupId>
+        <artifactId>bom</artifactId>
+        <version>${awssdk.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
     </dependencies>
   </dependencyManagement>
 
@@ -30,6 +37,19 @@
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-data-mongodb</artifactId>
+    </dependency>
+
+    <!-- Event backbone (decision 4). Boot 4 splits auto-configuration per technology,
+         so the starter is required for the KafkaTemplate and listener wiring. -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-kafka</artifactId>
+    </dependency>
+
+    <!-- Object storage (decision 5): R2 in production, MinIO locally; both S3. -->
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>s3</artifactId>
     </dependency>
 
     <!-- Flamingock: versioned change classes, audited history in Mongo, distributed lock.

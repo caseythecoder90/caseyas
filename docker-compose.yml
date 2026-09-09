@@ -54,6 +54,74 @@ services:
       # 27018 on the host: another project already owns 27017 on this machine
       - "27018:27017"
 
+  # Kafka 3.9 in KRaft mode, one node. Two listeners: PLAINTEXT for containers
+  # (kafka:9092), HOST for the api running on the Windows host (localhost:29092).
+  kafka:
+    image: apache/kafka:3.9.1
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093,HOST://:29092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,HOST://localhost:29092
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT,HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_HEAP_OPTS: -Xmx512m
+    volumes:
+      - kafka:/var/lib/kafka/data
+    ports:
+      - "29092:29092"
+
+  # MinIO stands in for Cloudflare R2 locally: same S3 API, so the app code is
+  # identical and production is only different credentials and endpoint.
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ours-dev
+      MINIO_ROOT_PASSWORD: ours-dev-secret
+    volumes:
+      - minio:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      until mc alias set local http://minio:9000 ours-dev ours-dev-secret; do sleep 2; done;
+      mc mb -p local/ours;
+      exit 0"
+
+  # Media processing (libvips + ffmpeg). Rebuild after worker code changes:
+  #   docker compose build worker && docker compose up -d worker
+  worker:
+    build:
+      context: .
+      dockerfile: docker/worker.Dockerfile
+    depends_on:
+      - kafka
+      - minio
+      - mongodb
+    environment:
+      SPRING_MONGODB_URI: mongodb://root:devpassword@mongodb:27017/ours?authSource=admin
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      OURS_STORAGE_ENDPOINT: http://minio:9000
+      OURS_STORAGE_PUBLIC_ENDPOINT: http://localhost:9000
+      OURS_STORAGE_BUCKET: ours
+      OURS_STORAGE_ACCESS_KEY: ours-dev
+      OURS_STORAGE_SECRET_KEY: ours-dev-secret
+      OURS_STORAGE_PATH_STYLE: "true"
+
 volumes:
   keycloak-postgres:
   mongodb:
+  kafka:
+  minio:

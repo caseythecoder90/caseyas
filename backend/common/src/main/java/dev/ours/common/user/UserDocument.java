@@ -36,6 +36,11 @@ public class UserDocument {
     return keycloakId;
   }
 
+  /** Only {@link UserService} re-links a document to a new subject. */
+  void setKeycloakId(String keycloakId) {
+    this.keycloakId = keycloakId;
+  }
+
   public String getUsername() {
     return username;
   }
