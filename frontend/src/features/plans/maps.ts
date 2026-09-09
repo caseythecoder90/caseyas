@@ -20,7 +20,8 @@ export function hasMapTarget(location?: ServerLocation | null): boolean {
 /** The URL to open for `location`, or null when there is nothing to open. */
 export function mapsUrlFor(location?: ServerLocation | null): string | null {
   if (!location) return null
-  if (location.mapsUrl) return location.mapsUrl
+  // mapsUrl is typed by a person; only ever open a web URL from it.
+  if (location.mapsUrl && /^https?:\/\//i.test(location.mapsUrl.trim())) return location.mapsUrl.trim()
   const apple = isApplePlatform()
   if (location.lat != null && location.lng != null) {
     const q = `${location.lat},${location.lng}`
