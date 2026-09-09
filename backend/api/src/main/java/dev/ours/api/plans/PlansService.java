@@ -87,7 +87,35 @@ public class PlansService {
     plan.createdBy = userId;
     plan.createdAt = now;
     plan.updatedAt = now;
-    return plans.save(plan);
+    var saved = plans.save(plan);
+    seedDefaultChecklists(saved);
+    return saved;
+  }
+
+  /**
+   * Every plan starts with the lists the design assumes (architecture section 7): a trip gets
+   * before-we-go, packing and shopping; an event gets a to-do list, shopping and guests.
+   */
+  private void seedDefaultChecklists(PlanDocument plan) {
+    record Default(String name, PlanChecklistDocument.Kind kind) {}
+    var defaults =
+        plan.type == PlanType.EVENT
+            ? List.of(
+                new Default("To do", PlanChecklistDocument.Kind.TODO),
+                new Default("Shopping", PlanChecklistDocument.Kind.SHOPPING),
+                new Default("Guests", PlanChecklistDocument.Kind.GUESTS))
+            : List.of(
+                new Default("Before we go", PlanChecklistDocument.Kind.TODO),
+                new Default("Packing", PlanChecklistDocument.Kind.PACKING),
+                new Default("Shopping", PlanChecklistDocument.Kind.SHOPPING));
+    for (int i = 0; i < defaults.size(); i++) {
+      var list = new PlanChecklistDocument();
+      list.planId = plan.id;
+      list.name = defaults.get(i).name();
+      list.kind = defaults.get(i).kind();
+      list.sortKey = i;
+      checklists.save(list);
+    }
   }
 
   public PlanDocument update(String id, UpdatePlanRequest req) {
@@ -153,6 +181,7 @@ public class PlansService {
     item.details = req.details();
     item.cost = req.cost();
     item.confirmation = trimmed(req.confirmation());
+    item.notes = blankToNull(req.notes());
     if (req.links() != null) item.links = new ArrayList<>(req.links());
     if (req.attachmentIds() != null) item.attachmentIds = new ArrayList<>(req.attachmentIds());
     if (req.tags() != null) item.tags = new ArrayList<>(req.tags());
@@ -188,6 +217,7 @@ public class PlansService {
     if (Boolean.TRUE.equals(req.clearCost())) item.cost = null;
     else if (req.cost() != null) item.cost = req.cost();
     if (req.confirmation() != null) item.confirmation = trimmed(req.confirmation());
+    if (req.notes() != null) item.notes = blankToNull(req.notes());
     if (req.links() != null) item.links = new ArrayList<>(req.links());
     if (req.attachmentIds() != null) item.attachmentIds = new ArrayList<>(req.attachmentIds());
     if (req.tags() != null) item.tags = new ArrayList<>(req.tags());
@@ -430,5 +460,10 @@ public class PlansService {
 
   private static String trimmed(String s) {
     return s == null ? null : s.trim();
+  }
+
+  /** Blank text means "no value": a cleared textarea should not persist as "". */
+  private static String blankToNull(String s) {
+    return s == null || s.isBlank() ? null : s.trim();
   }
 }

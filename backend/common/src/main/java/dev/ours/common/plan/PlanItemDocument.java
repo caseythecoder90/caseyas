@@ -43,6 +43,10 @@ public class PlanItemDocument {
   public ItemDetails details;
   public Cost cost;
   public String confirmation;
+
+  /** Free text on the item itself ("premium economy, check-in opens 24h before"). */
+  public String notes;
+
   public List<Link> links = new ArrayList<>();
   public List<String> attachmentIds = new ArrayList<>();
   public List<String> tags = new ArrayList<>();

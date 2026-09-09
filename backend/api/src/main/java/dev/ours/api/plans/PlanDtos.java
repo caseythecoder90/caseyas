@@ -52,11 +52,13 @@ public final class PlanDtos {
       String confirmation,
       List<PlanItemDocument.Link> links,
       List<String> attachmentIds,
-      List<String> tags) {}
+      List<String> tags,
+      String notes) {}
 
   /**
    * Partial update; null means leave alone. {@code clearDay}, {@code clearStart} and {@code
-   * clearCost} exist because null cannot mean both "untouched" and "remove".
+   * clearCost} exist because null cannot mean both "untouched" and "remove". Text fields clear
+   * when sent blank ({@code notes: ""}).
    */
   public record UpdateItemRequest(
       ItemKind kind,
@@ -75,7 +77,8 @@ public final class PlanDtos {
       String confirmation,
       List<PlanItemDocument.Link> links,
       List<String> attachmentIds,
-      List<String> tags) {}
+      List<String> tags,
+      String notes) {}
 
   public record ReorderEntry(@NotBlank String itemId, Integer day, double sortKey) {}
 
