@@ -57,8 +57,8 @@ public final class PlanDtos {
 
   /**
    * Partial update; null means leave alone. {@code clearDay}, {@code clearStart} and {@code
-   * clearCost} exist because null cannot mean both "untouched" and "remove". Text fields clear
-   * when sent blank ({@code notes: ""}).
+   * clearCost} exist because null cannot mean both "untouched" and "remove". Text fields clear when
+   * sent blank ({@code notes: ""}).
    */
   public record UpdateItemRequest(
       ItemKind kind,

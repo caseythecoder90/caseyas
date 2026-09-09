@@ -13,9 +13,36 @@ Plans for real: the plans, items, checklists, budget and media domain; Kafka and
 | Storage of dates | Calendar dates and wall-clock times are ISO **strings** in Mongo, never BSON dates: a UTC pod and an Eastern-time laptop must agree the trip starts Feb 4 (found live; regression-tested) |
 | CI | Rolls out `worker` alongside `frontend` and `api` |
 
+## Where things stand (2026-09-09)
+
+Everything below the R2 steps has been done on the cluster; the stack is live at `https://ours.caseylovesyas.com`. What is still open, in order:
+
+1. **Storage is an interim MinIO, not R2.** The R2 bucket needs the Cloudflare dashboard (payment method, API token), so `ours/base/minio.yaml` + `storage-ingress.yaml` in the cluster repo stand in with the same S3 API. It is served under the app's own origin, `https://ours.caseylovesyas.com/ours/<key>`, so presigned URLs work with no media DNS record and no CORS. Uploads, thumbnails and the nightly dumps all work against it; the dumps just do not leave the node yet. Section 2b below is the swap.
+2. **CI cannot deploy yet.** `KUBE_CONFIG_OURS` and `KUBE_CONFIG_KEYCLOAK` are not set on the repository's `production` environment (generating them reads the service-account tokens, which the assistant session was not allowed to do). Until they are, roll out by hand from WSL with the admin kubeconfig:
+
+```bash
+TAG=$(git -C ~/Projects/caseyas rev-parse --short HEAD)   # CI tags images with the 7-char SHA
+for c in frontend api worker; do
+  kubectl -n ours set image deploy/$c $c=ghcr.io/caseythecoder90/caseyas-$c:$TAG
+done
+kubectl -n ours rollout status deploy/api
+```
+
+   To set the two secrets (one-time, from WSL where terraform is installed):
+
+```bash
+cd ~/Projects/k8s-cluster-hetzner
+gh secret set KUBE_CONFIG_OURS     --repo caseythecoder90/caseyas --env production --body "$(./scripts/gen-ci-kubeconfig.sh ours)"
+gh secret set KUBE_CONFIG_KEYCLOAK --repo caseythecoder90/caseyas --env production --body "$(./scripts/gen-ci-kubeconfig.sh keycloak)"
+```
+
+   If `terraform output` is unavailable, the API server is `https://23.88.109.187:6443`; edit the `SERVER=` line of the script.
+
+3. **Keycloak's admin steps** from the milestone 1 runbook (permanent admin with OTP, delete `bootstrap`) and the two first sign-ins are still yours to do.
+
 ## 1. Create the R2 bucket
 
-In the Cloudflare dashboard (R2 needs a payment method on file even inside the free tier):
+Not done yet; the interim MinIO above covers everything until it is. In the Cloudflare dashboard (R2 needs a payment method on file even inside the free tier):
 
 1. R2 → Create bucket → name `ours`, location automatic.
 2. R2 → Manage API tokens → Create API token: permissions **Object Read & Write**, scoped to the `ours` bucket only. Save the Access Key ID and Secret Access Key.
@@ -49,6 +76,7 @@ kubectl -n ours create secret generic ours-storage \
   --from-literal=OURS_STORAGE_PATH_STYLE=true \
   --from-literal=OURS_STORAGE_ACCESS_KEY="<access key id>" \
   --from-literal=OURS_STORAGE_SECRET_KEY="<secret access key>" \
+  --from-literal=OURS_STORAGE_RCLONE_PROVIDER=Cloudflare \
   --from-literal=MEDIA_HOST="${ACCOUNT}.r2.cloudflarestorage.com"
 ```
 
@@ -59,8 +87,33 @@ kubectl -n keycloak create secret generic ours-storage \
   --from-literal=OURS_STORAGE_ENDPOINT="https://${ACCOUNT}.r2.cloudflarestorage.com" \
   --from-literal=OURS_STORAGE_BUCKET=ours \
   --from-literal=OURS_STORAGE_ACCESS_KEY="<access key id>" \
-  --from-literal=OURS_STORAGE_SECRET_KEY="<secret access key>"
+  --from-literal=OURS_STORAGE_SECRET_KEY="<secret access key>" \
+  --from-literal=OURS_STORAGE_RCLONE_PROVIDER=Cloudflare
 ```
+
+`OURS_STORAGE_RCLONE_PROVIDER` is new: the backup CronJobs read rclone's S3 provider from the secret (`Cloudflare` for R2, `Minio` for the stand-in) instead of hardcoding it.
+
+## 2b. Swapping the interim MinIO for R2
+
+The interim secrets on the cluster point at `http://minio:9000` inside and `https://ours.caseylovesyas.com` outside, bucket `ours`, provider `Minio`. Objects uploaded meanwhile live on the worker's `minio-data` PVC, so copy them across first if any matter:
+
+```bash
+kubectl -n ours port-forward svc/minio 9000:9000 &
+MINIO_KEY=$(kubectl -n ours get secret ours-storage -o jsonpath='{.data.OURS_STORAGE_ACCESS_KEY}' | base64 -d)
+MINIO_SECRET=$(kubectl -n ours get secret ours-storage -o jsonpath='{.data.OURS_STORAGE_SECRET_KEY}' | base64 -d)
+rclone copy \
+  --s3-provider Minio --s3-endpoint http://localhost:9000 --s3-access-key-id "$MINIO_KEY" --s3-secret-access-key "$MINIO_SECRET" :s3:ours \
+  --s3-provider Cloudflare --s3-endpoint "https://${ACCOUNT}.r2.cloudflarestorage.com" ... :s3:ours   # or two named remotes in rclone.conf
+```
+
+Then, in this order:
+
+1. `kubectl -n ours delete secret ours-storage && kubectl -n keycloak delete secret ours-storage`, recreate both with the R2 values from section 2.
+2. In the cluster repo remove `minio.yaml` and `storage-ingress.yaml` from `kubernetes/apps/ours/base/kustomization.yaml`, delete the two files, commit.
+3. `kubectl -n ours delete deploy/minio svc/minio ingress/ours-storage job/minio-init pvc/minio-data secret/minio`
+4. `kubectl -n ours rollout restart deploy/api deploy/worker deploy/frontend` (they read the secret at start; the frontend re-renders its CSP with the new `MEDIA_HOST`).
+
+Presigned URLs already handed to a browser die with the old endpoint; a reload fixes that.
 
 ## 3. Apply and roll
 

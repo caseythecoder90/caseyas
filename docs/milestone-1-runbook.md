@@ -9,6 +9,18 @@ Two repositories are involved:
 
 Everything below runs from WSL with the admin kubeconfig active, the same way the other apps were deployed. Secrets are created by hand and never committed, per the cluster repo's convention.
 
+## Where things stand (2026-09-09)
+
+Steps 1 through 6 and the apply in 7 and 8 are done. Keycloak had crash-looped for two days after the first apply because `keycloak-deployment.yaml` declared `KC_DB_URL=jdbc:postgresql://postgres:5432/$(POSTGRES_DB)` *before* `POSTGRES_DB` in the env list; Kubernetes only expands `$(VAR)` for variables that come earlier, so Keycloak was told to open a database literally named `$(POSTGRES_DB)`. The manifest now declares `POSTGRES_DB` first. After the fix the log showed `Realm 'ours' imported`, the certificate went `Ready`, and `https://auth.caseylovesyas.com/realms/ours/.well-known/openid-configuration` returns the right issuer with HSTS.
+
+Verified from outside: `https://ours.caseylovesyas.com/` serves the shell, `/api/me` answers 401 unauthenticated, `/oauth2/authorization/keycloak` redirects to Keycloak with `code_challenge_method=S256`, and both hosts carry `Strict-Transport-Security`. Flamingock applied `create-users-collection` on first start.
+
+Still to do, and only you can:
+
+- Step 7's console work: port-forward, sign in as `bootstrap`, create the permanent admin with OTP, delete `bootstrap` and the `keycloak-bootstrap` secret, drop the two `KC_BOOTSTRAP_*` env entries.
+- Step 8's first sign-ins on both phones.
+- Step 9's two GitHub secrets (commands in `milestone-2-runbook.md`, "Where things stand"). Until then, deploys are `kubectl set image` by hand.
+
 ## 0. Before starting
 
 - The GitHub repository is `caseythecoder90/caseyas`. Image names derive from it: `ghcr.io/caseythecoder90/caseyas-frontend`, `-api`, `-worker`, `-keycloak`. If the repository gets a different name, change the four image references in the manifests.

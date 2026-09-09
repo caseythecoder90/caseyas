@@ -17,6 +17,7 @@ import dev.ours.common.plan.PlanItemDocument;
 import dev.ours.common.plan.PlanItemRepository;
 import dev.ours.common.plan.PlanRepository;
 import dev.ours.common.plan.PlanStatus;
+import dev.ours.common.plan.PlanType;
 import dev.ours.common.plan.Vote;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
