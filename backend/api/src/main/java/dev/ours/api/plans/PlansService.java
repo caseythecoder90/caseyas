@@ -133,14 +133,16 @@ public class PlansService {
               .map(d -> new PlanDocument.Destination(d.trim(), null, null, null))
               .toList();
     }
-    if (req.rate() != null) {
+    if (req.localCurrency() != null || req.rate() != null) {
       var c = plan.currency;
+      var local =
+          req.localCurrency() != null && !req.localCurrency().isBlank()
+              ? req.localCurrency().trim().toUpperCase()
+              : c == null ? "USD" : c.local();
+      var rate = req.rate() != null ? req.rate() : c == null ? null : c.rate();
+      var rateSetAt = req.rate() != null ? Instant.now(clock) : c == null ? null : c.rateSetAt();
       plan.currency =
-          new PlanDocument.Currency(
-              c == null ? "USD" : c.home(),
-              c == null ? "USD" : c.local(),
-              req.rate(),
-              Instant.now(clock));
+          new PlanDocument.Currency(c == null ? "USD" : c.home(), local, rate, rateSetAt);
     }
     if (req.archived() != null) {
       plan.archivedAt = req.archived() ? Instant.now(clock) : null;
@@ -210,7 +212,8 @@ public class PlansService {
       item.end = null;
     } else {
       if (req.start() != null) item.start = req.start();
-      if (req.end() != null) item.end = req.end();
+      if (Boolean.TRUE.equals(req.clearEnd())) item.end = null;
+      else if (req.end() != null) item.end = req.end();
     }
     if (req.timezone() != null) item.timezone = req.timezone();
     if (req.location() != null) item.location = req.location();

@@ -69,6 +69,16 @@ export function fmtDateTime(iso?: string | null): string {
   return `${DOWS[d.getDay()]} ${MONTHS[d.getMonth()]} ${d.getDate()} · ${fmtTime(iso)}`
 }
 
+/** 'HH:MM' wall-clock time of `now` in `timeZone` (device zone when the zone is unknown). */
+export function wallClock(now: Date, timeZone?: string | null): string {
+  const opts: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }
+  try {
+    return new Intl.DateTimeFormat('en-GB', { ...opts, timeZone: timeZone || undefined }).format(now)
+  } catch {
+    return new Intl.DateTimeFormat('en-GB', opts).format(now)
+  }
+}
+
 const SYMBOLS: Record<string, string> = { USD: '$', JPY: '¥', EUR: '€', GBP: '£' }
 
 export function money(amount?: number | null, currency?: string | null): string {
@@ -303,8 +313,8 @@ export function toBookings(items: ServerItem[]): (Booking & { id: string })[] {
           ...base,
           kind: 'stay' as const,
           addr: i.location?.address ?? i.location?.name ?? '',
-          dep: d.checkIn ? 'Check in ' + fmtDateTime(d.checkIn + 'T15:00') : '',
-          arr: d.checkOut ? 'Check out ' + fmtDateTime(d.checkOut + 'T11:00') : '',
+          dep: d.checkIn ? 'Check in ' + fmtDateTime(i.start?.startsWith(d.checkIn) ? i.start : d.checkIn + 'T15:00') : '',
+          arr: d.checkOut ? 'Check out ' + fmtDateTime(i.end?.startsWith(d.checkOut) ? i.end : d.checkOut + 'T11:00') : '',
           seats: d.phone ?? '',
           sub: d.roomInfo ?? '',
         }
@@ -431,6 +441,7 @@ export function toPins(plan: ServerPlan, items: ServerItem[]): Record<string, Ma
     const [minLng, maxLng] = [Math.min(...lngs), Math.max(...lngs)]
     const span = (v: number, min: number, max: number) => (max === min ? 50 : 10 + ((v - min) / (max - min)) * 80)
     result[city] = cityItems.map((i) => ({
+      id: i.id,
       kind: VIEW_KIND[i.kind] ?? 'activity',
       title: i.title,
       place: i.location?.name ?? '',
@@ -442,10 +453,11 @@ export function toPins(plan: ServerPlan, items: ServerItem[]): Record<string, Ma
   return result
 }
 
+/** Today's items with past / next flags judged on the destination's wall clock. */
 export function toTodayItems(plan: ServerPlan, items: ServerItem[], today: Date, now: Date): TodayItem[] {
   const day = tripDayOf(plan, today)
   if (day == null) return []
-  const nowKey = now.toISOString().slice(11, 16)
+  const nowKey = wallClock(now, plan.timezone)
   const dayItems = items
     .filter((i) => i.day === day && i.status !== 'cancelled' && i.kind !== 'idea')
     .sort((a, b) => (a.start ?? '').localeCompare(b.start ?? ''))
@@ -455,6 +467,8 @@ export function toTodayItems(plan: ServerPlan, items: ServerItem[], today: Date,
     const past = !!time && time < nowKey
     const next = !past && !nextMarked && !!time ? (nextMarked = true) : false
     return {
+      id: i.id,
+      start: i.start ?? undefined,
       time: fmtTime(i.start),
       kind: VIEW_KIND[i.kind] ?? 'activity',
       title: i.title,

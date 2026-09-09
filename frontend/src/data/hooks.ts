@@ -1,12 +1,16 @@
 // Typed data accessors. As of milestone 2 the Plans feature reads and writes the
 // real api through TanStack Query; everything else still serves the mock data
-// and moves over in milestones 3-5. Screens only ever import from here.
+// and moves over in milestones 3-6. Screens only ever import from here.
+//
+// The mock-backed hooks (memories, gallery, chat, notes) only hand out their
+// placeholder data while the `designPreview` dev flag is on (useDesignPreview);
+// off, chat and notes come back empty so no badge or thread can be mistaken for
+// something real. The screens branch on the same flag for their empty states.
 
 import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useMemo } from 'react'
 import { initialFor } from '../people'
 import { paths } from '../paths'
-import { dotFor } from '../ui/tokens'
 import type {
   CreateItemInput,
   CreatePlanInput,
@@ -17,23 +21,18 @@ import type {
   ServerPlan,
   ServerVote,
   UpdateItemInput,
+  UpdatePlanInput,
 } from './api/plansApi'
 import { plansApi, uploadFile } from './api/plansApi'
-import { ANNIVERSARY, JAPAN_START, LAKE_START, SIM_OPTIONS, countdown, daysUntil, parseISO, realToday, simFor } from './dates'
+import { ANNIVERSARY, SIM_OPTIONS, daysUntil, formatMonthDay, parseISO, realToday, simFor } from './dates'
 import {
-  AGENDA_EVENT_DAYS,
-  AGENDA_EXTRA,
   AUTO_ALBUMS,
-  CALENDAR_LEGEND,
-  CALENDAR_MONTH,
   CAPS,
   CHAT_MEDIA,
   CHAT_UNREAD,
   CUSTOM_ALBUMS,
   DETAIL_COMMENTS,
   DETAIL_INLINE_DESKTOP,
-  EV,
-  EVENTS,
   EVENT_MORE_KEYS,
   EVENT_SEGS,
   GAL_FILTERS,
@@ -48,22 +47,19 @@ import {
   ON_THIS_DAY,
   OPT_INS,
   PINNED,
-  PLAN_BARS,
   PLAN_GROUPS,
   PLAN_NOTIF_CHIPS,
   REACTIONS,
   SEALED_NOTE,
   SECURITY,
   STATS,
-  TODAY_HEADER,
+
   TRIP_MORE_KEYS,
   TRIP_SEGS,
   TYPING_MS,
   WAVE,
   WAVE_PLAYED,
-  WEEK,
   YESTERDAY_MESSAGE,
-  agendaSortKey,
   baseMessages,
   detailFor,
   detailGallery,
@@ -78,6 +74,7 @@ import {
   bundleCounts,
   fmtDateTime,
   toBookings,
+  personFor,
   toBudget,
   toChecklists,
   toDays,
@@ -92,7 +89,6 @@ import {
 } from './planViews'
 import { setState, useStore } from './store'
 import type {
-  AgendaRow,
   Budget,
   ChatMessage,
   FridgeNote,
@@ -104,10 +100,12 @@ import type {
   NotifKey,
   OptInKey,
   OverviewHero,
+  Person,
   Plan,
   PlanId,
   PlanNotifKey,
   PlanStatus,
+  RecurringDay,
   Sim,
   TimelineLayout,
   TodayHeader,
@@ -123,6 +121,17 @@ export function useSimDate(): [string | null, (iso: string | null) => void] {
   const simDate = useStore((s) => s.simDate)
   const set = useCallback((iso: string | null) => setState({ simDate: iso }), [])
   return [simDate, set]
+}
+
+/**
+ * Dev flag: show the design's placeholder data on the tabs whose milestones have
+ * not landed (memories, gallery, chat, notes). Off by default; persisted under
+ * 'ours.designPreview'.
+ */
+export function useDesignPreview(): [boolean, (on: boolean) => void] {
+  const on = useStore((s) => s.designPreview)
+  const set = useCallback((next: boolean) => setState({ designPreview: next }), [])
+  return [on, set]
 }
 
 /** "Today": the simulated date when set, else the real date (local midnight). */
@@ -244,6 +253,7 @@ export function usePlans() {
   }
 }
 
+const EMPTY_MEDIA: ServerMedia[] = []
 const EMPTY_BUDGET: Budget = { planned: '$0', committed: '$0', paid: '$0', plannedJpy: '', committedJpy: '', paidJpy: '', rate: '', rows: [] }
 
 function skeletonPlan(id: string): PlanView {
@@ -275,6 +285,10 @@ export interface PlanMutations {
   tick: (key: string, done: boolean) => Promise<void>
   addListItem: (listId: string, text: string, assignee?: string, dueDate?: string) => Promise<void>
   setRate: (rate: number) => Promise<void>
+  /** PATCH the plan itself (name, dates, timezone, destinations, status, rate) */
+  updatePlan: (patch: UpdatePlanInput) => Promise<ServerPlan>
+  /** DELETE the plan; the caller navigates away afterwards */
+  deletePlan: () => Promise<void>
   upload: (files: File[] | FileList) => Promise<ServerMedia[]>
   linkPreview: typeof plansApi.linkPreview
   refresh: () => Promise<void>
@@ -347,6 +361,17 @@ export function usePlan(id: PlanId | string | undefined) {
         await plansApi.updatePlan(pid, { rate })
         void refresh()
       },
+      updatePlan: async (patch) => {
+        const plan = await plansApi.updatePlan(pid, patch)
+        void refresh()
+        return plan
+      },
+      deletePlan: async () => {
+        await plansApi.deletePlan(pid)
+        qc.removeQueries({ queryKey: ['plan-bundle', pid] })
+        qc.removeQueries({ queryKey: ['plan-budget', pid] })
+        void qc.invalidateQueries({ queryKey: ['plans'] })
+      },
       upload: async (files) => {
         const uploaded: ServerMedia[] = []
         for (const file of Array.from(files)) {
@@ -358,8 +383,11 @@ export function usePlan(id: PlanId | string | undefined) {
       linkPreview: plansApi.linkPreview,
       refresh,
     }),
-    [pid, refresh],
+    [pid, refresh, qc],
   )
+
+  /** Display name for a user id (the item's author, a comment's author). */
+  const who = useCallback((userId: string | null | undefined): Person => personFor(userId, users), [users])
 
   /** legacy signature kept for the checklist screens */
   const toggleTick = useCallback((key: string, currentlyDone: boolean) => void m.tick(key, !currentlyDone), [m])
@@ -435,11 +463,14 @@ export function usePlan(id: PlanId | string | undefined) {
   }, [views.lists, views.docs.length, pinCount, budget.planned])
 
   const todayHeader = useMemo<TodayHeader>(() => {
-    if (!serverPlan || tripDay == null) return TODAY_HEADER
-    const next = views.todayItems.find((t) => t.next)
     const date = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+    const eyebrow = date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+    if (!serverPlan || tripDay == null) {
+      return { eyebrow, title: serverPlan?.name ?? '', sub: serverPlan?.destinations[0]?.name ?? '', next: 'not travelling today' }
+    }
+    const next = views.todayItems.find((t) => t.next)
     return {
-      eyebrow: date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }),
+      eyebrow,
       title: `Day ${tripDay} of ${tripLength(serverPlan)}`,
       sub: views.days.find((d) => d.n === tripDay)?.city ?? '',
       next: next ? `next · ${next.time}` : 'nothing timed today',
@@ -494,7 +525,12 @@ export function usePlan(id: PlanId | string | undefined) {
     error: bundleQ.isError,
     notFound: !bundleQ.isPending && !bundle,
     offline,
+    /** the raw plan document (timezone, currency, dates) for the forms */
+    serverPlan,
     serverItems: items,
+    /** the bundle's media (presigned urls) for attachment thumbs and originals */
+    serverMedia: bundle?.media ?? EMPTY_MEDIA,
+    who,
     m,
   }
 }
@@ -517,6 +553,7 @@ function heroFor(plan: ServerPlan, items: ServerItem[], today: Date): OverviewHe
   const day = tripDayOf(plan, today)
   const num = day != null ? String(day) : plan.dateStart ? String(Math.max(0, daysUntil(plan.dateStart, today))) : ''
   return {
+    id: upcoming.id,
     num,
     line: day != null ? `of ${tripLength(plan)} days` : 'days to go',
     kind: upcoming.kind === 'flight' ? 'flight' : 'reservation',
@@ -619,12 +656,19 @@ function scheduleTypingOff() {
   typingTimer = setTimeout(() => setState({ typing: false }), TYPING_MS)
 }
 
+const NO_MESSAGES: ChatMessage[] = []
+const NO_PINNED: typeof PINNED = []
+const NO_MEDIA: typeof CHAT_MEDIA = []
+
+/** Chat thread and badges. Empty (badge 0) until milestone 4 unless the design preview is on. */
 export function useChat(variant: 'mobile' | 'desktop' = 'mobile') {
+  const preview = useStore((s) => s.designPreview)
   const sent = useStore((s) => s.sent)
-  const typing = useStore((s) => s.typing)
+  const typingNow = useStore((s) => s.typing)
   const sealedDone = useStore((s) => s.sealedDone)
-  const base = useMemo(() => baseMessages(variant), [variant])
-  const messages = useMemo<ChatMessage[]>(() => [...base, ...sent], [base, sent])
+  const base = useMemo(() => (preview ? baseMessages(variant) : NO_MESSAGES), [variant, preview])
+  const messages = useMemo<ChatMessage[]>(() => (preview ? [...base, ...sent] : NO_MESSAGES), [base, sent, preview])
+  const typing = preview && typingNow
   const send = useCallback((text: string): boolean => {
     if (!text.trim()) return false
     setState((s) => ({ sent: [...s.sent, { id: Date.now(), from: 'me', type: 'text', text, time: 'Delivered' }], typing: true }))
@@ -634,21 +678,22 @@ export function useChat(variant: 'mobile' | 'desktop' = 'mobile') {
   const sharePhoto = useCallback((img: string) => {
     setState((s) => ({ sent: [...s.sent, { id: Date.now(), from: 'me', type: 'photo', img, time: 'Delivered' }] }))
   }, [])
-  const notesUnread = sealedDone ? 0 : 1
+  const chatUnread = preview ? CHAT_UNREAD : 0
+  const notesUnread = preview && !sealedDone ? 1 : 0
   return {
     messages,
     send,
     sharePhoto,
     typing,
     sealedDone,
-    /** desktop Chat badge */
-    chatUnread: CHAT_UNREAD,
+    /** desktop Chat badge (0 until milestone 4 unless previewing) */
+    chatUnread,
     /** desktop Notes badge */
     notesUnread,
-    /** mobile Chat tab badge (messages + notes): 3, then 2 once the sealed note is opened */
-    badge: CHAT_UNREAD + notesUnread,
-    pinned: PINNED,
-    media: CHAT_MEDIA,
+    /** mobile Chat tab badge (messages + notes): preview 3, then 2 once the sealed note is opened; else 0 */
+    badge: chatUnread + notesUnread,
+    pinned: preview ? PINNED : NO_PINNED,
+    media: preview ? CHAT_MEDIA : NO_MEDIA,
     wave: WAVE,
     wavePlayed: WAVE_PLAYED,
     yesterday: YESTERDAY_MESSAGE,
@@ -663,10 +708,14 @@ export interface LeaveNoteInput {
   seal?: boolean
 }
 
+const NO_NOTES: FridgeNote[] = []
+
+/** The fridge. Empty until milestone 6 unless the design preview is on. */
 export function useNotes() {
+  const preview = useStore((s) => s.designPreview)
   const added = useStore((s) => s.addedNotes)
   const sealedDone = useStore((s) => s.sealedDone)
-  const notes = useMemo<FridgeNote[]>(() => [...added, ...NOTES], [added])
+  const notes = useMemo<FridgeNote[]>(() => (preview ? [...added, ...NOTES] : NO_NOTES), [added, preview])
   const leaveNote = useCallback((input: LeaveNoteInput): boolean => {
     if (!input.body.trim()) return false
     const note: FridgeNote = {
@@ -682,28 +731,34 @@ export function useNotes() {
     return true
   }, [])
   const openSealed = useCallback(() => setState({ sealedDone: true }), [])
-  return { notes, leaveNote, hasUnopened: !sealedDone, sealedDone, openSealed, colors: NOTE_COLORS, sealed: SEALED_NOTE }
+  return { notes, leaveNote, hasUnopened: preview && !sealedDone, sealedDone, openSealed, colors: NOTE_COLORS, sealed: SEALED_NOTE }
 }
 
 // ---------------------------------------------------------------- calendar
 
+/**
+ * The calendar's own events collection (/api/events) does not exist until
+ * milestone 5, so this serves no events at all: only `today` (real or
+ * simulated) and the one date the app has always known, the anniversary, as a
+ * yearly all-day row. Plan bars and booked items come from the plans api via
+ * features/calendar/planCalendar.ts.
+ */
 export function useEvents() {
   const today = useToday()
-  const agenda = useMemo<AgendaRow[]>(() => {
-    const eventRows: AgendaRow[] = AGENDA_EVENT_DAYS.map((n) => {
-      const e = EVENTS[n]
-      const hasTime = e.when.includes('· ')
-      const timePart = hasTime ? e.when.split('· ')[1] : ''
-      const sub = hasTime ? timePart + (e.rule.startsWith('Every') ? ' · ' + e.rule : '') : e.when
-      return { day: String(n), dow: e.when.slice(0, 3), title: e.title, sub, dot: dotFor(e.owner), right: e.loc, rightColor: 'var(--fg3)', eventDay: n }
-    })
-    const fixed = AGENDA_EXTRA.map((r) => ({
-      ...r,
-      right: r.planId === 'lake' ? countdown(LAKE_START, today) : r.planId === 'japan' ? countdown(JAPAN_START, today) : countdown(ANNIVERSARY, today),
-    }))
-    return [...eventRows, ...fixed].sort((a, b) => agendaSortKey(a) - agendaSortKey(b))
-  }, [today])
-  return { events: EVENTS, blocks: EV, planBars: PLAN_BARS, agenda, month: CALENDAR_MONTH, week: WEEK, legend: CALENDAR_LEGEND, today }
+  const recurring = useMemo<RecurringDay[]>(() => {
+    const anniv = parseISO(ANNIVERSARY)
+    return [
+      {
+        key: 'anniversary',
+        month: anniv.getMonth() + 1,
+        day: anniv.getDate(),
+        title: 'Anniversary',
+        sub: `${formatMonthDay(ANNIVERSARY)} · every year`,
+        dot: 'var(--fg1)',
+      },
+    ]
+  }, [])
+  return { recurring, today }
 }
 
 // ---------------------------------------------------------------- preferences (Us)

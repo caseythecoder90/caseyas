@@ -1,17 +1,16 @@
 // mobile-b-plans.md 2.4 - the Overview segment: post-trip banner, the big
-// number + Next up card, Flights/Stays tiles, the budget strip, checklist
-// rings, newest ideas and the locked-note teaser.
+// number + Next up card (tap opens the item sheet), Flights/Stays tiles, the
+// budget strip, checklist rings, newest ideas and the locked-note teaser.
 
 import { Link } from 'react-router'
 import { AFTER_TRIP } from '../../data/mock'
-import { mockImage } from '../../data/mockImage'
 import { paths } from '../../paths'
 import type { Booking, Budget, Idea, OverviewHero, PlanSeg } from '../../data/types'
 import type { ChecklistView, PlanView } from '../../data/hooks'
 import { Eyebrow, PAPER, PHOTO_FILTER } from '../../ui'
 import { LOCK_ICON_SM, Ring, useCopyCode } from './bits'
 
-const TEASER_LINES = ['Passport C · 5X8 221 904 · exp 2031', 'Passport Y · 7K1 088 435 · exp 2029', 'Embassy +81 3-3224-5000']
+const TEASER_LINES = ['Passport numbers and expiry dates', 'Embassy and emergency contacts', 'Insurance policy']
 
 function Tile({ label, value, onClick }: { label: string; value: string; onClick: () => void }) {
   return (
@@ -47,6 +46,7 @@ export interface SegOverviewProps {
   budget: Budget
   tripDays: number
   onSeg: (seg: PlanSeg) => void
+  onOpenItem?: (itemId: string) => void
 }
 
 function countOf(bookings: Booking[], group: Booking['group']): string {
@@ -59,7 +59,7 @@ function moneyNum(s: string): number {
   return Number(s.replace(/[^0-9.]/g, '')) || 0
 }
 
-export function SegOverview({ plan, hero, heroIsFallback, afterTrip, lists, ideas, bookings, budget, tripDays, onSeg }: SegOverviewProps) {
+export function SegOverview({ plan, hero, heroIsFallback, afterTrip, lists, ideas, bookings, budget, tripDays, onSeg, onOpenItem }: SegOverviewProps) {
   const copy = useCopyCode()
   const rings = lists.map((l) => ({ name: l.name, n: `${l.doneNow}/${l.total}`, pct: l.pct }))
   const range = plan.dates.replace(/,\s*\d{4}$/, '')
@@ -86,28 +86,7 @@ export function SegOverview({ plan, hero, heroIsFallback, afterTrip, lists, idea
           </Eyebrow>
           <div style={{ fontFamily: 'var(--font-serif)', fontSize: 26, lineHeight: 1.1 }}>Turn this trip into a memory</div>
           <div style={{ fontSize: 13, color: 'var(--fg2)', lineHeight: 1.5 }}>
-            It'll start you off with a heading per day ({tripDays}), the day's items as a list, and the 212 photos taken {range} ready to pick from.
-          </div>
-          <div style={{ display: 'flex', gap: 4 }}>
-            {['jp1', 'jp2', 'jp3'].map((s) => (
-              <img key={s} src={mockImage(s, 120, 120)} alt="" style={{ width: 44, height: 44, borderRadius: 4, objectFit: 'cover', filter: PHOTO_FILTER }} />
-            ))}
-            <span
-              style={{
-                width: 44,
-                height: 44,
-                borderRadius: 4,
-                background: 'var(--surface-2)',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontFamily: 'var(--font-mono)',
-                fontSize: 11,
-                color: 'var(--fg2)',
-              }}
-            >
-              +209
-            </span>
+            It'll start you off with a heading per day ({tripDays}), the day's items as a list, and the photos taken {range} ready to pick from.
           </div>
           <Link
             to={paths.composeFromPlan(plan.id)}
@@ -136,6 +115,16 @@ export function SegOverview({ plan, hero, heroIsFallback, afterTrip, lists, idea
       )}
 
       <div
+        role={hero.id && onOpenItem ? 'button' : undefined}
+        tabIndex={hero.id && onOpenItem ? 0 : undefined}
+        aria-label={hero.id && onOpenItem ? `Open ${hero.title}` : undefined}
+        onClick={() => hero.id && onOpenItem?.(hero.id)}
+        onKeyDown={(e) => {
+          if ((e.key === 'Enter' || e.key === ' ') && hero.id && onOpenItem) {
+            e.preventDefault()
+            onOpenItem(hero.id)
+          }
+        }}
         style={{
           borderRadius: 8,
           border: '1px solid var(--border)',
@@ -144,6 +133,7 @@ export function SegOverview({ plan, hero, heroIsFallback, afterTrip, lists, idea
           display: 'flex',
           flexDirection: 'column',
           gap: 6,
+          cursor: hero.id && onOpenItem ? 'pointer' : undefined,
         }}
       >
         <Eyebrow size={10}>{heroIsFallback ? 'Next up' : `Next up · ${hero.kind}`}</Eyebrow>
@@ -152,7 +142,10 @@ export function SegOverview({ plan, hero, heroIsFallback, afterTrip, lists, idea
         {!heroIsFallback && hero.conf !== '' && (
           <button
             type="button"
-            onClick={() => copy(hero.conf)}
+            onClick={(e) => {
+              e.stopPropagation()
+              copy(hero.conf)
+            }}
             aria-label={`Copy confirmation ${hero.conf}`}
             style={{
               display: 'flex',

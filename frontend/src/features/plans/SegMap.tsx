@@ -1,10 +1,16 @@
 // mobile-b-plans.md 2.11 / desktop.md 7.2 - the placeholder map: city chips,
-// teardrop pins coloured by kind, and the pin card (mobile) or pin rail
-// (desktop).
+// teardrop pins laid out from real coordinates (tiles arrive with milestone
+// 6), and the pin card (mobile) or pin rail (desktop). "Directions" opens the
+// item's location in the platform's map app.
 
 import { useState } from 'react'
+import { useParams } from 'react-router'
+import { usePlan } from '../../data/hooks'
 import type { MapPin } from '../../data/types'
 import { Eyebrow, filterChip, kindColor } from '../../ui'
+import { hasMapTarget, openInMaps } from './maps'
+
+const DEFERRED = 'Real map tiles arrive with milestone 6 · pins are laid out from coordinates for now'
 
 const LEGEND: { kind: string; label: string }[] = [
   { kind: 'food', label: 'food' },
@@ -24,6 +30,9 @@ export function SegMap({
   variant?: 'mobile' | 'desktop'
 }) {
   const desktop = variant === 'desktop'
+  const { id: planId } = useParams()
+  const { serverItems } = usePlan(planId)
+  const locationOf = (pin?: MapPin) => (pin?.id ? serverItems.find((i) => i.id === pin.id)?.location : undefined)
   const cityList = cities && cities.length > 0 ? cities : Object.keys(pins)
   const [picked, setCity] = useState<string | null>(null)
   const [selected, setSelected] = useState<number | null>(null)
@@ -156,11 +165,20 @@ export function SegMap({
             })}
           </div>
           <Eyebrow style={{ marginBottom: 8 }}>Pins · {city}</Eyebrow>
+          <div style={{ fontSize: 12, color: 'var(--fg3)', lineHeight: 1.5, marginBottom: 8 }}>{DEFERRED}</div>
           {list.map((p, i) => (
-            <button
+            <div
               key={`${p.title}-${i}`}
-              type="button"
+              role="button"
+              tabIndex={0}
+              aria-pressed={selected === i}
               onClick={() => setSelected((s) => (s === i ? null : i))}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  setSelected((s) => (s === i ? null : i))
+                }
+              }}
               style={{
                 display: 'flex',
                 gap: 10,
@@ -168,7 +186,6 @@ export function SegMap({
                 padding: '10px 8px',
                 borderRadius: 6,
                 background: selected === i ? 'var(--surface)' : 'transparent',
-                border: 'none',
                 cursor: 'pointer',
                 textAlign: 'left',
                 color: 'var(--fg1)',
@@ -182,7 +199,19 @@ export function SegMap({
                   {p.kind} · {p.place} · {p.when}
                 </span>
               </span>
-            </button>
+              {hasMapTarget(locationOf(p)) && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    openInMaps(locationOf(p))
+                  }}
+                  style={{ height: 28, padding: '0 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--fg1)', fontSize: 11, cursor: 'pointer', flex: 'none' }}
+                >
+                  Directions
+                </button>
+              )}
+            </div>
           ))}
         </div>
       </div>
@@ -252,22 +281,25 @@ export function SegMap({
               <div style={{ fontFamily: 'var(--font-serif)', fontSize: 19, lineHeight: 1.1, marginTop: 3 }}>{pin.title}</div>
               <div style={{ fontSize: 12, color: 'var(--fg2)' }}>{pin.place}</div>
             </div>
-            <button
-              type="button"
-              style={{
-                height: 32,
-                padding: '0 10px',
-                borderRadius: 6,
-                border: '1px solid var(--border)',
-                background: 'transparent',
-                color: 'var(--fg1)',
-                fontSize: 12,
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              Directions
-            </button>
+            {hasMapTarget(locationOf(pin)) && (
+              <button
+                type="button"
+                onClick={() => openInMaps(locationOf(pin))}
+                style={{
+                  height: 32,
+                  padding: '0 10px',
+                  borderRadius: 6,
+                  border: '1px solid var(--border)',
+                  background: 'transparent',
+                  color: 'var(--fg1)',
+                  fontSize: 12,
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                Directions
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -280,7 +312,7 @@ export function SegMap({
           </span>
         ))}
       </div>
-      <div style={{ fontSize: 12, color: 'var(--fg3)' }}>Map view is an opt-in switch in Us → Preferences (off by default). Tap a pin for its card.</div>
+      <div style={{ fontSize: 12, color: 'var(--fg3)', lineHeight: 1.5 }}>{DEFERRED} · tap a pin for its card</div>
     </div>
   )
 }

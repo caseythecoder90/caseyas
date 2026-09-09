@@ -1,7 +1,8 @@
 // mobile-b-plans.md 2.5 - Itinerary (Schedule for an event): the unscheduled
 // tray, sticky day headers, item cards and the dashed "+ Add to day N" button.
-// Tray rows are draggable onto a day and also tappable (the day chooser sheet)
-// so the interaction works without a pointer.
+// Every card is a tap target that opens the item sheet (edit, move, delete,
+// maps). Tray rows are also draggable onto a day; "Put it on a day" lives in
+// the sheet's actions so the interaction works without a pointer.
 
 import { useState } from 'react'
 import type { ItineraryDay } from '../../data/types'
@@ -16,28 +17,28 @@ export interface SegItineraryProps {
   unscheduled: TrayItem[]
   onAddToDay: (dayN: number) => void
   onDropOnDay: (trayIndex: number, dayN: number) => void
-  onPickTrayItem: (trayIndex: number) => void
+  onOpenItem: (itemId: string) => void
 }
 
-export function SegItinerary({ days, unscheduled, onAddToDay, onDropOnDay, onPickTrayItem }: SegItineraryProps) {
+export function SegItinerary({ days, unscheduled, onAddToDay, onDropOnDay, onOpenItem }: SegItineraryProps) {
   const [over, setOver] = useState<number | null>(null)
 
   return (
     <div style={{ padding: '20px 20px 0', display: 'flex', flexDirection: 'column', gap: 20 }}>
       {unscheduled.length > 0 && (
         <div style={{ borderRadius: 8, border: '1px dashed var(--border)', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <Eyebrow size={10}>Unscheduled · {unscheduled.length} · drag onto a day</Eyebrow>
+          <Eyebrow size={10}>Unscheduled · {unscheduled.length} · drag onto a day, or tap</Eyebrow>
           {unscheduled.map((u) => (
             <button
-              key={u.index}
+              key={u.id ?? u.index}
               type="button"
               draggable
               onDragStart={(e) => {
                 e.dataTransfer.setData('text/plain', `${TRAY_PREFIX}${u.index}`)
                 e.dataTransfer.effectAllowed = 'move'
               }}
-              onClick={() => onPickTrayItem(u.index)}
-              aria-label={`Put ${u.title} on a day`}
+              onClick={() => u.id && onOpenItem(u.id)}
+              aria-label={`Open ${u.title}`}
               style={{
                 display: 'flex',
                 gap: 10,
@@ -97,7 +98,17 @@ export function SegItinerary({ days, unscheduled, onAddToDay, onDropOnDay, onPic
 
           {dy.items.map((it, i) => (
             <div
-              key={`${dy.n}-${i}-${it.title}`}
+              key={it.id ?? `${dy.n}-${i}-${it.title}`}
+              role="button"
+              tabIndex={0}
+              aria-label={`Open ${it.title}`}
+              onClick={() => it.id && onOpenItem(it.id)}
+              onKeyDown={(e) => {
+                if ((e.key === 'Enter' || e.key === ' ') && it.id) {
+                  e.preventDefault()
+                  onOpenItem(it.id)
+                }
+              }}
               style={{
                 display: 'grid',
                 gridTemplateColumns: '64px 1fr',
@@ -106,7 +117,7 @@ export function SegItinerary({ days, unscheduled, onAddToDay, onDropOnDay, onPic
                 borderRadius: 8,
                 border: '1px solid var(--border)',
                 background: 'var(--surface)',
-                cursor: 'grab',
+                cursor: 'pointer',
               }}
             >
               <div>

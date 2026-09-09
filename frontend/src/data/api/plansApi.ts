@@ -65,6 +65,8 @@ export interface ServerItem {
   details?: ServerDetails | null
   cost?: { amount: number; currency: string; paid: boolean } | null
   confirmation?: string | null
+  /** free text; PATCH with '' to clear, omit to leave alone */
+  notes?: string | null
   links: { url: string; title?: string | null; image?: string | null; site?: string | null }[]
   attachmentIds: string[]
   tags: string[]
@@ -166,14 +168,29 @@ export interface CreateItemInput {
   details?: ServerDetails
   cost?: { amount: number; currency: string; paid: boolean }
   confirmation?: string
+  notes?: string
   links?: LinkPreview[]
   attachmentIds?: string[]
   tags?: string[]
 }
 
+/** PATCH /api/plans/{id}; every field optional, null leaves it alone. */
+export interface UpdatePlanInput {
+  name?: string
+  status?: ServerPlanStatus
+  dateStart?: string
+  dateEnd?: string
+  timezone?: string
+  destinations?: string[]
+  rate?: number
+  /** ISO 4217 code; the home currency stays USD */
+  localCurrency?: string
+}
+
 export interface UpdateItemInput extends Partial<CreateItemInput> {
   clearDay?: boolean
   clearStart?: boolean
+  clearEnd?: boolean
   clearCost?: boolean
 }
 
@@ -194,8 +211,9 @@ export const plansApi = {
   users: () => api<ServerUser[]>('/api/users'),
 
   createPlan: (input: CreatePlanInput) => api<ServerPlan>('/api/plans', json(input)),
-  updatePlan: (id: string, patch: Record<string, unknown>) =>
+  updatePlan: (id: string, patch: UpdatePlanInput) =>
     api<ServerPlan>(`/api/plans/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
+  deletePlan: (id: string) => api<void>(`/api/plans/${id}`, { method: 'DELETE' }),
 
   createItem: (planId: string, input: CreateItemInput) => api<ServerItem>(`/api/plans/${planId}/items`, json(input)),
   updateItem: (planId: string, itemId: string, patch: UpdateItemInput) =>

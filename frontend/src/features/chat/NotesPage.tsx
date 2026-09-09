@@ -1,13 +1,17 @@
-// /notes - the Chat tab's second segment on mobile (mobile-c section 3): the
-// intro row, the Unopened sealed note, the two-column board and the note
-// composer sheet. At >= md desktop.md section 8 asks for the "not in this
-// round" placeholder instead.
+// /notes - the Chat tab's second segment on mobile (mobile-c section 3). Until
+// milestone 6 it is an empty fridge (NotesEmpty); with the designPreview dev
+// flag on it is the designed board on mock data: the intro row, the Unopened
+// sealed note, the two-column board and the note composer sheet. At >= md
+// desktop.md section 8 asks for the "not in this round" placeholder instead.
 
 import { useState } from 'react'
-import { useNotes } from '../../data/hooks'
+import { useDesignPreview, useNotes } from '../../data/hooks'
 import type { NoteColor } from '../../data/types'
 import { HER } from '../../people'
 import { useSession } from '../../session'
+import { EmptyState } from '../../ui'
+import { NOTES_ARRIVE } from '../shared/milestones'
+import { PreviewBanner } from '../shared/PreviewBanner'
 import { ChatHeader } from './ChatHeader'
 import {
   DESKTOP_PLACEHOLDER,
@@ -42,8 +46,36 @@ function DesktopPlaceholder() {
   )
 }
 
+/** The honest fridge before milestone 6: header, intro line, one dashed empty state. */
+function NotesEmpty() {
+  return (
+    <section style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }} aria-label="Notes">
+      <ChatHeader seg="notes" hasUnopened={false} status={null} />
+      <div style={{ flex: 1, minHeight: 0, overflow: 'auto', padding: '16px 20px 110px' }}>
+        <div style={{ fontSize: 13, color: 'var(--fg2)' }}>{NOTES_INTRO}</div>
+        <EmptyState title="No notes yet." sub="The fridge is bare." style={{ marginTop: 20 }}>
+          <div style={{ fontSize: 12, color: 'var(--fg3)', marginTop: 14 }}>{NOTES_ARRIVE}.</div>
+        </EmptyState>
+      </div>
+    </section>
+  )
+}
+
 export default function NotesPage() {
   const isDesktop = useIsDesktop()
+  const [preview] = useDesignPreview()
+  if (isDesktop) return <DesktopPlaceholder />
+  if (!preview) return <NotesEmpty />
+  return (
+    <>
+      <PreviewBanner style={{ padding: '4px 20px 0' }} />
+      <NotesPreview />
+    </>
+  )
+}
+
+/** The designed board on mock data (design preview only, mobile). */
+function NotesPreview() {
   const notes = useNotes()
   const { meName } = useSession()
 
@@ -53,8 +85,6 @@ export default function NotesPage() {
   const [sched, setSched] = useState(false)
   const [seal, setSeal] = useState(false)
   const [sealedOpen, setSealedOpen] = useState(false)
-
-  if (isDesktop) return <DesktopPlaceholder />
 
   const leave = () => {
     if (!notes.leaveNote({ body: draft, color, sched, seal })) return

@@ -1,27 +1,35 @@
 // desktop.md section 7 - the plan workspace at >= md: a 200px cover band, the
 // full tab strip, and the three-column itinerary (days | selected item | ideas
-// tray) with the other tabs rendered under the same chrome.
+// tray) with the other tabs rendered under the same chrome. Column B reads the
+// selected ServerItem: real notes, attachments and comments, "Open in Maps",
+// "Edit" (the kind's form) and "More" (the item sheet: move, unschedule,
+// delete). Tray rows and idea cards open the item sheet; the "..." button
+// opens the plan menu (all plans, edit plan, delete plan).
 
 import { useRef, useState, type DragEvent } from 'react'
-import { Link } from 'react-router'
-import { BUDGET_RATE_NOTE, DESKTOP_TABS, EMPTY_DAY_COPY, NO_NOTES } from '../../data/mock'
-import { HER_INI } from '../../people'
-import { paths } from '../../paths'
+import { DESKTOP_TABS, EMPTY_DAY_COPY, NO_NOTES } from '../../data/mock'
+import { HER_INI, initialFor } from '../../people'
 import type { usePlan } from '../../data/hooks'
 import type { Idea, IdeaFilter, PlanSeg, Vote } from '../../data/types'
-import { Eyebrow, Field, PAPER, PHOTO_FILTER, Toggle, segTab, stColor, voteGlyph } from '../../ui'
-import { Bar, LOCK_ICON_SM, Ring, useCopyCode } from './bits'
+import { Eyebrow, Field, PAPER, PHOTO_FILTER, Toggle, segTab, stColor, useToast, voteGlyph } from '../../ui'
+import { LOCK_ICON_SM, Ring, useCopyCode } from './bits'
+import { hasMapTarget, openInMaps } from './maps'
 import { SegBookings } from './SegBookings'
+import { SegBudget } from './SegBudget'
 import { SegChecklists } from './SegChecklists'
 import { SegIdeas } from './SegIdeas'
 import { SegLocked } from './SegLocked'
 import { SegMap } from './SegMap'
 import { IDEA_PREFIX, TRAY_PREFIX, type PlanBoard } from './usePlanBoard'
 
-const TEASER_LINES = ['Passport C · 5X8 221 904', 'Passport Y · 7K1 088 435', 'Embassy +81 3-3224-5000']
+const TEASER_LINES = ['Passport numbers', 'Embassy and emergency contacts', 'Insurance policy']
 
-// "set by you on Sep 6 · use today’s rate" — the second half is the reset link.
-const [RATE_SET_BY = '', RATE_RESET = ''] = BUDGET_RATE_NOTE.split(' · ')
+const ACTION_BUTTON = { height: 36, padding: '0 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--fg1)', fontSize: 13, cursor: 'pointer' } as const
+
+const fmtCommentAt = (iso: string) => {
+  const d = new Date(iso)
+  return Number.isNaN(d.getTime()) ? '' : d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+}
 
 export interface PlanDesktopProps {
   p: ReturnType<typeof usePlan>
@@ -31,11 +39,12 @@ export interface PlanDesktopProps {
   ideas: Idea[]
   ideaFilter: IdeaFilter
   onIdeaFilter: (f: IdeaFilter) => void
-  /** legacy session-local offline flag; the workspace binds to p.offline instead */
-  offline?: boolean
-  onOffline?: (on: boolean) => void
-  onPickIdea: (idea: Idea) => void
-  onPickTrayItem: (index: number) => void
+  /** opens the item sheet for a server item */
+  onOpenItem: (itemId: string) => void
+  /** opens the kind's form in edit mode */
+  onEditItem: (itemId: string) => void
+  /** the cover band's "..." button: all plans, edit plan, delete plan */
+  onPlanMenu: () => void
 }
 
 function parseDrag(data: string): { kind: 'tray'; index: number } | { kind: 'idea'; title: string } | null {
@@ -61,10 +70,11 @@ function moneyNum(s: string): number {
   return Number(s.replace(/[^0-9.]/g, '')) || 0
 }
 
-export function PlanDesktop({ p, board, seg, onSeg, ideas, ideaFilter, onIdeaFilter, onPickIdea, onPickTrayItem }: PlanDesktopProps) {
+export function PlanDesktop({ p, board, seg, onSeg, ideas, ideaFilter, onIdeaFilter, onOpenItem, onEditItem, onPlanMenu }: PlanDesktopProps) {
   const [sel, setSel] = useState('0-0')
   const [over, setOver] = useState<number | null>(null)
   const copy = useCopyCode()
+  const toast = useToast()
 
   const [noteDraft, setNoteDraft] = useState('')
   const [noteBusy, setNoteBusy] = useState(false)
@@ -73,14 +83,15 @@ export function PlanDesktop({ p, board, seg, onSeg, ideas, ideaFilter, onIdeaFil
   const [offErr, setOffErr] = useState('')
   const [uploadBusy, setUploadBusy] = useState(false)
   const [uploadErr, setUploadErr] = useState('')
-  const [rateDraft, setRateDraft] = useState<string | null>(null)
-  const [rateBusy, setRateBusy] = useState(false)
-  const [rateErr, setRateErr] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
 
   const [selDay = 0, selItem = 0] = sel.split('-').map(Number)
   const day = board.days[selDay] ?? board.days[0]
   const item = day?.items[selItem] ?? board.days.flatMap((d) => d.items)[0]
+  const sItem = item?.id ? p.serverItems.find((i) => i.id === item.id) : undefined
+  const attachments = (sItem?.attachmentIds ?? []).map(
+    (id) => p.serverMedia.find((md) => md.id === id) ?? { id, originalName: 'Attachment', urls: {} as { thumb?: string | null; original?: string | null } },
+  )
 
   const pickItem = (key: string) => {
     setSel(key)
@@ -129,26 +140,6 @@ export function PlanDesktop({ p, board, seg, onSeg, ideas, ideaFilter, onIdeaFil
         setUploadBusy(false)
         if (fileRef.current) fileRef.current.value = ''
       })
-  }
-
-  const commitRate = () => {
-    if (rateDraft == null || rateBusy) return
-    if (rateDraft.trim() === p.budget.rate) {
-      setRateDraft(null)
-      return
-    }
-    const v = Number(rateDraft.trim())
-    if (!Number.isFinite(v) || v <= 0) {
-      setRateErr('Enter a number above zero.')
-      return
-    }
-    setRateErr('')
-    setRateBusy(true)
-    p.m
-      .setRate(v)
-      .then(() => setRateDraft(null))
-      .catch((e: unknown) => setRateErr(errMsg(e)))
-      .finally(() => setRateBusy(false))
   }
 
   const plannedN = moneyNum(p.budget.planned)
@@ -207,23 +198,27 @@ export function PlanDesktop({ p, board, seg, onSeg, ideas, ideaFilter, onIdeaFil
             aria-label="Available offline"
             offColor="rgba(250,249,246,.25)"
           />
-          <Link
-            to={paths.plans}
-            aria-label="All plans"
+          <button
+            type="button"
+            onClick={onPlanMenu}
+            aria-label="Plan menu"
             style={{
               width: 36,
               height: 36,
               borderRadius: 8,
+              border: 'none',
               background: 'rgba(250,249,246,.15)',
               color: PAPER,
               marginLeft: 8,
               display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
+              cursor: 'pointer',
+              fontSize: 16,
             }}
           >
             ···
-          </Link>
+          </button>
         </div>
       </div>
     </div>
@@ -445,8 +440,8 @@ export function PlanDesktop({ p, board, seg, onSeg, ideas, ideaFilter, onIdeaFil
                       e.dataTransfer.setData('text/plain', `${TRAY_PREFIX}${u.index}`)
                       e.dataTransfer.effectAllowed = 'move'
                     }}
-                    onClick={() => onPickTrayItem(u.index)}
-                    aria-label={`Put ${u.title} on a day`}
+                    onClick={() => u.id && onOpenItem(u.id)}
+                    aria-label={`Open ${u.title}`}
                     style={{
                       display: 'flex',
                       gap: 8,
@@ -590,67 +585,129 @@ export function PlanDesktop({ p, board, seg, onSeg, ideas, ideaFilter, onIdeaFil
                     </div>
                   ))}
                 </div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  {['Open in Maps', 'Share to chat', 'Edit'].map((b) => (
-                    <button
-                      key={b}
-                      type="button"
-                      style={{ height: 36, padding: '0 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--fg1)', fontSize: 13, cursor: 'pointer' }}
-                    >
-                      {b}
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {hasMapTarget(sItem?.location) && (
+                    <button type="button" onClick={() => openInMaps(sItem?.location)} style={ACTION_BUTTON}>
+                      Open in Maps
                     </button>
-                  ))}
+                  )}
+                  <button type="button" onClick={() => toast.show('Sharing to chat arrives with milestone 4')} style={ACTION_BUTTON}>
+                    Share to chat
+                  </button>
+                  {item.id && (
+                    <button type="button" onClick={() => onEditItem(item.id!)} style={ACTION_BUTTON}>
+                      Edit
+                    </button>
+                  )}
+                  {item.id && (
+                    <button type="button" onClick={() => onOpenItem(item.id!)} style={ACTION_BUTTON}>
+                      More
+                    </button>
+                  )}
                 </div>
                 <div>
-                  <Eyebrow style={{ marginBottom: 10 }}>Attachments · {item.docs}</Eyebrow>
-                  <div style={{ display: 'flex', gap: 10 }}>
-                    {Array.from({ length: item.docs }, (_, i) => (
-                      <span
-                        key={i}
-                        style={{
-                          width: 72,
-                          height: 96,
-                          borderRadius: 4,
-                          background: 'var(--surface)',
-                          border: '1px solid var(--border)',
-                          display: 'inline-flex',
-                          alignItems: 'flex-end',
-                          justifyContent: 'center',
-                          fontFamily: 'var(--font-mono)',
-                          fontSize: 9,
-                          color: 'var(--fg3)',
-                          paddingBottom: 6,
-                        }}
-                      >
-                        PDF
-                      </span>
-                    ))}
-                    <span
+                  <Eyebrow style={{ marginBottom: 10 }}>Attachments · {attachments.length}</Eyebrow>
+                  <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                    {attachments.map((a) => {
+                      const href = a.urls?.original ?? a.urls?.thumb ?? undefined
+                      const tile = (
+                        <span
+                          title={a.originalName}
+                          style={{
+                            width: 72,
+                            height: 96,
+                            borderRadius: 4,
+                            background: 'var(--surface)',
+                            border: '1px solid var(--border)',
+                            display: 'inline-flex',
+                            alignItems: 'flex-end',
+                            justifyContent: 'center',
+                            fontFamily: 'var(--font-mono)',
+                            fontSize: 9,
+                            color: 'var(--fg3)',
+                            paddingBottom: 6,
+                            overflow: 'hidden',
+                          }}
+                        >
+                          {a.urls?.thumb ? <img src={a.urls.thumb} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /> : 'FILE'}
+                        </span>
+                      )
+                      return href ? (
+                        <a key={a.id} href={href} target="_blank" rel="noopener noreferrer">
+                          {tile}
+                        </a>
+                      ) : (
+                        <span key={a.id}>{tile}</span>
+                      )
+                    })}
+                    <button
+                      type="button"
+                      onClick={() => item.id && onEditItem(item.id)}
+                      aria-label="Add an attachment"
                       style={{
                         width: 72,
                         height: 96,
                         borderRadius: 4,
                         border: '1px dashed var(--border)',
+                        background: 'transparent',
                         display: 'inline-flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         color: 'var(--fg3)',
                         fontSize: 20,
+                        cursor: 'pointer',
                       }}
                     >
                       +
-                    </span>
+                    </button>
                   </div>
                 </div>
                 <div>
                   <Eyebrow style={{ marginBottom: 10 }}>Notes</Eyebrow>
-                  <div style={{ fontSize: 15, lineHeight: 1.6, color: 'var(--fg1)', maxWidth: 560 }}>{p.itemNotes[item.title] ?? NO_NOTES}</div>
+                  <div style={{ fontSize: 15, lineHeight: 1.6, color: sItem?.notes ? 'var(--fg1)' : 'var(--fg3)', maxWidth: 560, whiteSpace: 'pre-wrap' }}>{sItem?.notes?.trim() || NO_NOTES}</div>
                   <div style={{ fontSize: 12, color: 'var(--fg3)', marginTop: 8 }}>Added by {item.by}</div>
+                </div>
+                <div>
+                  <Eyebrow style={{ marginBottom: 10 }}>{sItem?.comments.length ? `Comments · ${sItem.comments.length}` : 'Comments'}</Eyebrow>
+                  <div style={{ display: 'flex', flexDirection: 'column', maxWidth: 560 }}>
+                    {(sItem?.comments ?? []).map((c) => {
+                      const person = p.who(c.authorId)
+                      const mine = person === 'Casey'
+                      return (
+                        <div key={c.id} style={{ display: 'flex', gap: 10, padding: '8px 0', borderTop: '1px solid var(--border)' }}>
+                          <span
+                            title={person}
+                            style={{
+                              width: 22,
+                              height: 22,
+                              borderRadius: 999,
+                              background: mine ? 'var(--accent-soft)' : 'var(--green-soft)',
+                              color: mine ? 'var(--accent)' : 'var(--green)',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontFamily: 'var(--font-mono)',
+                              fontSize: 9,
+                              flex: 'none',
+                            }}
+                          >
+                            {initialFor(person)}
+                          </span>
+                          <span style={{ minWidth: 0, flex: 1 }}>
+                            <span style={{ display: 'block', fontSize: 14, lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{c.text}</span>
+                            <span style={{ display: 'block', fontSize: 11, color: 'var(--fg3)', marginTop: 2 }}>
+                              {person} · {fmtCommentAt(c.at)}
+                            </span>
+                          </span>
+                        </div>
+                      )
+                    })}
+                  </div>
                   {item.id && (
                     <>
                       <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', maxWidth: 560, marginTop: 14 }}>
                         <Field
-                          label="Add a note"
+                          label="Add a comment"
                           wrapStyle={{ flex: 1 }}
                           value={noteDraft}
                           onChange={(e) => setNoteDraft(e.target.value)}
@@ -708,8 +765,8 @@ export function PlanDesktop({ p, board, seg, onSeg, ideas, ideaFilter, onIdeaFil
                   e.dataTransfer.setData('text/plain', `${IDEA_PREFIX}${i.title}`)
                   e.dataTransfer.effectAllowed = 'copy'
                 }}
-                onClick={() => onPickIdea(i)}
-                aria-label={`Put ${i.title} on a day`}
+                onClick={() => i.id && onOpenItem(i.id)}
+                aria-label={`Open ${i.title}`}
                 style={{
                   display: 'flex',
                   gap: 10,
@@ -781,7 +838,7 @@ export function PlanDesktop({ p, board, seg, onSeg, ideas, ideaFilter, onIdeaFil
 
       {seg === 'ideas' && (
         <div style={{ flex: 1, overflow: 'auto' }}>
-          <SegIdeas ideas={ideas} filters={p.ideaFilters} filter={ideaFilter} onFilter={onIdeaFilter} onPickIdea={onPickIdea} variant="desktop" />
+          <SegIdeas ideas={ideas} filters={p.ideaFilters} filter={ideaFilter} onFilter={onIdeaFilter} onOpenItem={onOpenItem} variant="desktop" />
         </div>
       )}
       {seg === 'bookings' && (
@@ -791,7 +848,7 @@ export function PlanDesktop({ p, board, seg, onSeg, ideas, ideaFilter, onIdeaFil
               Nothing booked yet.
             </div>
           ) : (
-            <SegBookings bookings={p.bookings} variant="desktop" />
+            <SegBookings bookings={p.bookings} variant="desktop" onOpenItem={onOpenItem} />
           )}
         </div>
       )}
@@ -802,86 +859,7 @@ export function PlanDesktop({ p, board, seg, onSeg, ideas, ideaFilter, onIdeaFil
       )}
       {seg === 'budget' && (
         <div style={{ flex: 1, overflow: 'auto' }}>
-          <div style={{ padding: '24px 40px', display: 'grid', gridTemplateColumns: '1fr 380px', gap: 32, alignContent: 'start' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12 }}>
-                {[
-                  { l: 'Planned', usd: p.budget.planned, jpy: p.budget.plannedJpy },
-                  { l: 'Committed', usd: p.budget.committed, jpy: p.budget.committedJpy },
-                  { l: 'Paid', usd: p.budget.paid, jpy: p.budget.paidJpy },
-                ].map((t) => (
-                  <div key={t.l} style={{ padding: '16px 18px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)' }}>
-                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--fg3)' }}>{t.l}</div>
-                    <div style={{ fontFamily: 'var(--font-serif)', fontSize: 34, lineHeight: 1.1, marginTop: 8 }}>{t.usd}</div>
-                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--fg3)', marginTop: 2 }}>{t.jpy}</div>
-                  </div>
-                ))}
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column' }}>
-                {p.budget.rows.map(([k, v, pct]) => (
-                  <div
-                    key={k}
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: '120px 1fr auto',
-                      gap: 16,
-                      alignItems: 'center',
-                      padding: '12px 0',
-                      borderTop: '1px solid var(--border)',
-                      fontSize: 14,
-                    }}
-                  >
-                    <span>{k}</span>
-                    <Bar pct={`${pct}%`} height={4} />
-                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13 }}>{v}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div style={{ padding: '16px 18px', borderRadius: 8, border: '1px solid var(--border)', alignSelf: 'start' }}>
-              <div style={{ fontSize: 14 }}>
-                1 USD ={' '}
-                <input
-                  value={rateDraft ?? p.budget.rate}
-                  onChange={(e) => setRateDraft(e.target.value)}
-                  onBlur={commitRate}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') commitRate()
-                  }}
-                  disabled={rateBusy}
-                  aria-label="Exchange rate, JPY per USD"
-                  inputMode="decimal"
-                  style={{
-                    width: 64,
-                    border: 'none',
-                    borderBottom: '1px solid var(--border)',
-                    background: 'transparent',
-                    fontFamily: 'var(--font-mono)',
-                    fontSize: 14,
-                    color: 'var(--fg1)',
-                    padding: '2px 0',
-                    borderRadius: 0,
-                  }}
-                />{' '}
-                JPY
-              </div>
-              <div style={{ fontSize: 12, color: 'var(--fg3)', marginTop: 4 }}>
-                {RATE_SET_BY} ·{' '}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setRateDraft(null)
-                    setRateErr('')
-                  }}
-                  style={{ font: 'inherit', color: 'var(--accent)', border: 'none', background: 'transparent', padding: 0, cursor: 'pointer' }}
-                >
-                  {RATE_RESET}
-                </button>
-              </div>
-              {rateBusy && <div style={{ fontSize: 12, color: 'var(--fg3)', marginTop: 4 }}>Saving…</div>}
-              {rateErr && <div style={{ fontSize: 12, color: 'var(--danger)', marginTop: 4 }}>{rateErr}</div>}
-            </div>
-          </div>
+          <SegBudget budget={p.budget} variant="desktop" />
         </div>
       )}
       {seg === 'docs' && (

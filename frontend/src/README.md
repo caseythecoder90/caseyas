@@ -22,16 +22,17 @@ src/
     types.ts          every data shape (mock-data.md section 20 + shell additions)
     mockImage.ts      mockImage(seed, w, h) -> deterministic data: SVG (warm gradient + grain); never a network image
     dates.ts          pure date helpers, Japan/Lake/Anniversary constants, SIM_OPTIONS, countdown(), japanCountdown()
-    store.ts          tiny useSyncExternalStore store for session state (reactions, favs, sent messages, notes, ticks, prefs, simDate)
+    store.ts          tiny useSyncExternalStore store for session state (reactions, favs, sent messages, notes, ticks, prefs, simDate, designPreview)
     hooks.ts          the typed accessors screens use (below)
     mock/             every dataset transcribed from mock-data.md with the real-project corrections
   features/
     memories/  TimelinePage, MemoryDetailPage, GalleryPage, ComposerPage
-    plans/     PlansListPage, PlanDetailPage, TodayPage
+    plans/     PlansListPage, PlanDetailPage, TodayPage; ItemSheet (item detail: edit / move / delete / maps / comments),
+               ItemForm (create + edit for every kind), AddItemSheets (kind picker, paste), PlanEditSheet (edit / delete plan), maps.ts
     calendar/  CalendarPage
     chat/      ChatPage, NotesPage
     us/        UsPage
-    shared/    StubScreen + README; components two features share go here
+    shared/    StubScreen, NotYetScreen, PreviewBanner, milestones (copy) + README; components two features share go here
 ```
 
 Rule: **features own their directory; shared changes go through `ui/` or `data/`.** A screen
@@ -128,16 +129,27 @@ PHOTO_SCRIM_55/6/5 DANGER_LITERAL EASE`.
 
 All return plain data plus setters; the implementation is the swap point for the api.
 
-- `useToday()` -> `Date` (simulated date or the real clock); `useSim()` -> `'now' | 'during' | 'after'`; `useSimDate()` -> `[iso | null, set]`
+**`designPreview`** (honest by default): only Plans talks to the api yet. The Memories, Chat,
+Notes and Us screens exist in full against mock data, but with the `designPreview` dev flag
+off (the default; `useDesignPreview()`, localStorage `ours.designPreview`) they render honest
+empty states instead: Memories shows the design's empty state and "Memories arrive with
+milestone 3", `/memories/:id`, `/gallery` and `/compose` render `NotYetScreen`, Chat is an empty
+thread with a disabled composer, Notes an empty fridge, and `useChat()` / `useNotes()` return
+no messages, no notes and a badge of 0. Us keeps only what is real (session name, theme,
+local preferences, the account-console link, plan counts). The switch lives in the Us screen's
+Developer card ("Design preview data"); on, every affected screen renders the designed mock
+content behind a `PreviewBanner` ("Design preview · placeholder data").
+
+- `useToday()` -> `Date` (simulated date or the real clock); `useSim()` -> `'now' | 'during' | 'after'`; `useSimDate()` -> `[iso | null, set]`; `useDesignPreview()` -> `[boolean, set]`
 - `usePlans()` -> `{ plans: PlanView[], groups: {label, key, items}[], sim, duringTrip, afterTrip, today }`. `PlanView` adds the sim-aware `status`/`countdown` ("in 151 days" / "Day 2 of 16" / "Home 2 days") and `openPath` (the Today screen while the Japan trip is underway)
-- `usePlan(id)` -> `{ plan, isEvent, sim, duringTrip, afterTrip, days, unscheduled, ideas, ideaFilters, filterIdeas, bookings, lists (ChecklistView with per-item `key`, `doneNow`, `pct`), toggleTick(key, currentlyDone), budget, docs, pins, hero, heroIsFallback, itemNotes, moreItems, segs, moreKeys, todayHeader, todayItems }`
+- `usePlan(id)` -> `{ plan, isEvent, sim, duringTrip, afterTrip, tripDay, days, unscheduled, ideas, ideaFilters, filterIdeas, bookings, lists (ChecklistView with per-item `key`, `doneNow`, `pct`), toggleTick(key, currentlyDone), budget, docs, pins, hero (with the item `id`), heroIsFallback, itemNotes, moreItems, segs, moreKeys, todayHeader, todayItems (with `id` and `start`), loading, error, notFound, offline: { enabled, note, toggle }, serverPlan (the raw ServerPlan: timezone, currency, dates), serverItems, serverMedia, who(userId) -> Person, m: PlanMutations }`. `PlanMutations` = `createItem, updateItem(itemId, patch with clearDay/clearStart/clearCost), deleteItem, vote, comment, reorder, tick, addListItem, setRate, updatePlan(patch), deletePlan(), upload(files), linkPreview(url), refresh`. The bundle query key is `['plan-bundle', id]`. Item view models (`ItineraryItem`, `UnscheduledItem`, `Idea`, `Booking`, `TodayItem`, `MapPin`) carry the server `id`; `features/plans/ItemSheet` looks the `ServerItem` up from `serverItems` by that id
 - `useMemories()` -> `{ memories, filters, filterMemories(list, filter), withShowMonth(list), layout, setLayout, showOnThisDay, setShowOnThisDay, onThisDay }`
 - `useMemory(id, variant?)` -> `{ memory, detail, inlineDesktop, gallery, caps, comments, reacted, setReacted(label), reactions: {label, n, on}[], favs, toggleFav(i), hasPlan, planId, planName, ini }`
 - `useGallery()` -> `{ months, monthsFor(filter) (tiles + countLabel, deletions applied), deleted, deleteTiles(ids), filters, customAlbums, autoAlbums }`
-- `useChat(variant?)` -> `{ messages, send(text), sharePhoto(img), typing, sealedDone, chatUnread (2), notesUnread (1 -> 0), badge (3 -> 2), pinned, media, wave, wavePlayed, yesterday }`
-- `useNotes()` -> `{ notes, leaveNote({body, color, sched, seal?}), hasUnopened, sealedDone, openSealed(), colors, sealed }`
-- `useEvents()` -> `{ events, blocks, planBars, agenda (sorted, countdowns computed), month, week, legend, today }`
-- `usePreferences()` -> `{ prefs, toggleNotif(k), togglePlanNotif(k), toggleOptIn(k), notifRows, planNotifChips, optIns, stats, security, simDate, setSimDate(iso | null), simOptions }` - the Us screen renders a dev-only "Simulate date" select from `simOptions` (plus a "real date" choice mapping to `null`)
+- `useChat(variant?)` -> `{ messages, send(text), sharePhoto(img), typing, sealedDone, chatUnread, notesUnread, badge, pinned, media, wave, wavePlayed, yesterday }` - all empty / 0 unless `designPreview` is on (then chatUnread 2, notesUnread 1 -> 0, badge 3 -> 2)
+- `useNotes()` -> `{ notes, leaveNote({body, color, sched, seal?}), hasUnopened, sealedDone, openSealed(), colors, sealed }` - `notes` empty and `hasUnopened` false unless `designPreview` is on
+- `useEvents()` -> `{ recurring (the anniversary as a yearly all-day row), today }`; everything else the calendar shows comes from the real plans through `features/calendar/planCalendar.ts` (bars, booked items, agenda rows, legend). The events collection itself is milestone 5.
+- `usePreferences()` -> `{ prefs, toggleNotif(k), togglePlanNotif(k), toggleOptIn(k), notifRows, planNotifChips, optIns, stats, security, simDate, setSimDate(iso | null), simOptions }` - the Us screen renders a dev-only "Simulate date" select from `simOptions` (plus a "real date" choice mapping to `null`); `stats` and `security` are the design's mock rows and the Us screen only uses them while `designPreview` is on (otherwise it computes plan / trip / day counts from `usePlans()` and shows one account-console row)
 - Theme: `useTheme()` from `../../theme` -> `{ theme, resolved, isDark, setTheme('light' | 'dark' | 'system') }` (the Us screen's Light / Late night buttons)
 - Session: `useSession()` from `../../session` -> `{ me, meName }`; `SignOutButton` is the "Lock now" action
 

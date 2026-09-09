@@ -2,6 +2,11 @@
 // DCLogic state object (reactions, favourites, sent messages, notes left,
 // checklist ticks, preferences, the simulated date). Milestone 2+ swaps the
 // hooks' implementation to the api; screens never touch this file directly.
+//
+// Two values persist in localStorage: the simulated date ('ours.simDate') and
+// the `designPreview` dev flag ('ours.designPreview'). With the flag off (the
+// default) the tabs whose milestones have not landed show honest empty states;
+// on, they render the design's placeholder data behind a "Design preview" banner.
 
 import { useSyncExternalStore } from 'react'
 import { DEFAULT_PREFS } from './mock/us'
@@ -10,6 +15,8 @@ import type { ChatMessage, FridgeNote, Prefs, TimelineLayout } from './types'
 export interface AppState {
   /** ISO yyyy-mm-dd, or null for the real clock (dev tweak). */
   simDate: string | null
+  /** show the design's mock data on the tabs that are not built yet (dev tweak) */
+  designPreview: boolean
   prefs: Prefs
   timelineLayout: TimelineLayout
   showOnThisDay: boolean
@@ -41,8 +48,19 @@ function readSimDate(): string | null {
   }
 }
 
+const PREVIEW_KEY = 'ours.designPreview'
+
+function readDesignPreview(): boolean {
+  try {
+    return localStorage.getItem(PREVIEW_KEY) === 'true'
+  } catch {
+    return false
+  }
+}
+
 const initialState: AppState = {
   simDate: readSimDate(),
+  designPreview: readDesignPreview(),
   prefs: DEFAULT_PREFS,
   timelineLayout: 'journal',
   showOnThisDay: true,
@@ -74,6 +92,14 @@ export function setState(patch: Partial<AppState> | ((s: AppState) => Partial<Ap
       /* storage unavailable */
     }
   }
+  if ('designPreview' in next) {
+    try {
+      if (state.designPreview) localStorage.setItem(PREVIEW_KEY, 'true')
+      else localStorage.removeItem(PREVIEW_KEY)
+    } catch {
+      /* storage unavailable */
+    }
+  }
   listeners.forEach((l) => l())
 }
 
@@ -97,5 +123,5 @@ export function useStore<T>(selector: (s: AppState) => T): T {
 
 /** Test/dev helper: reset every session value. */
 export function resetStore(): void {
-  setState({ ...initialState, simDate: state.simDate })
+  setState({ ...initialState, simDate: state.simDate, designPreview: state.designPreview })
 }

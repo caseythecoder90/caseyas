@@ -1,6 +1,7 @@
-// mobile-d-sheets.md section 2 - the plan detail "More" menu sheet.
-// Fixed list of five destinations regardless of plan type; picking one sets the
-// segment and closes.
+// mobile-d-sheets.md section 2 - the plan detail "More" menu sheet: the
+// segments that do not fit the segment bar, then the plan-level actions
+// (Edit plan, Delete plan; "All plans" on desktop, where the sheet doubles as
+// the cover band's "···" menu). Picking a segment sets it and closes.
 
 import { Sheet, SheetRow } from '../../ui'
 import type { MoreItem, PlanSeg } from '../../data/types'
@@ -10,22 +11,31 @@ export function MoreSheet({
   onClose,
   items,
   onPick,
+  onEditPlan,
+  onDeletePlan,
+  onAllPlans,
 }: {
   open: boolean
   onClose: () => void
   items: MoreItem[]
   onPick: (seg: PlanSeg) => void
+  onEditPlan?: () => void
+  onDeletePlan?: () => void
+  onAllPlans?: () => void
 }) {
   return (
     <Sheet open={open} onClose={onClose} gap={4} aria-label="More">
       {items.map((mi) => (
         <SheetRow key={mi.key} label={mi.label} meta={mi.meta} onClick={() => onPick(mi.key)} />
       ))}
+      {onAllPlans && <SheetRow label="All plans" meta="←" onClick={onAllPlans} />}
+      {onEditPlan && <SheetRow label="Edit plan" meta="name · dates · rate" onClick={onEditPlan} />}
+      {onDeletePlan && <SheetRow label={<span style={{ color: 'var(--danger)' }}>Delete plan</span>} onClick={onDeletePlan} />}
     </Sheet>
   )
 }
 
-/** The day chooser used by "drag onto a day" / "Put it on a day" on touch. */
+/** The day chooser used by "Put it on a day" / "Move to another day". */
 export function PutOnADaySheet({
   open,
   onClose,

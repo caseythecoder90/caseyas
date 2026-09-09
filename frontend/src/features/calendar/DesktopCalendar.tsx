@@ -1,13 +1,15 @@
 // desktop.md section 6 (lines 238-269 of the desktop prototype): a full-height
 // page with the 56px serif month title, prev/next, quick-add, a Month/Week
-// segmented control, then either the 7-column month grid (owner-coloured event
-// chips) or the 56px-per-hour week board, with the legend at the bottom.
+// segmented control, then either the 7-column month grid or the 56px-per-hour
+// week board, with the legend at the bottom. Everything drawn is real: plan
+// spans as bottom bars, booked items as chips (month) or timed blocks placed
+// by their time (week), the anniversary as an all-day chip. The quick-add
+// field is disabled until the events collection lands in milestone 5.
 
 import type { Ref } from 'react'
-import { EmptyState, Eyebrow, PAPER, Segmented, bgFor, dotFor } from '../../ui'
-import { QUICK_ADD_PLACEHOLDER } from '../../data/mock'
-import type { CalendarBlock, CalendarEvent } from '../../data/types'
-import { QuickAdd } from './QuickAdd'
+import { Eyebrow, PAPER, Segmented } from '../../ui'
+import { CalendarEmpty } from './CalendarEmpty'
+import { QUICK_ADD_DISABLED_PLACEHOLDER, QuickAdd } from './QuickAdd'
 import { fmtHour, type CalendarModel, type DayCell, type DesktopView } from './calendarModel'
 import type { CalendarItem } from './planCalendar'
 
@@ -37,31 +39,25 @@ export function DesktopCalendar({ cal, quickAddRef }: { cal: CalendarModel; quic
           </div>
         </div>
         <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
-          <QuickAdd
-            placeholder={QUICK_ADD_PLACEHOLDER}
-            onSubmit={cal.quickAdd}
-            variant="desktop"
-            inputRef={quickAddRef}
-            style={{ maxWidth: '100%' }}
-          />
+          <QuickAdd placeholder={QUICK_ADD_DISABLED_PLACEHOLDER} disabled variant="desktop" inputRef={quickAddRef} style={{ maxWidth: '100%' }} />
           <Segmented options={VIEW_OPTIONS} value={desktopView} onChange={setDesktopView} variant="calendar" aria-label="Calendar view" />
         </div>
       </div>
 
       {desktopView === 'month' ? <MonthBoard cal={cal} /> : <WeekBoard cal={cal} />}
 
-      {emptyMonth && desktopView === 'month' && (
-        <EmptyState title="Nothing here yet." sub={`Nothing on the calendar in ${info.name}.`} style={{ flex: 'none' }} />
-      )}
+      {emptyMonth && desktopView === 'month' && <CalendarEmpty style={{ flex: 'none' }} />}
 
-      <div style={{ display: 'flex', gap: 20, fontSize: 12, color: 'var(--fg3)', fontFamily: 'var(--font-mono)', flex: 'none' }}>
-        {legend.map(([label, color]) => (
-          <span key={label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ width: 8, height: 8, borderRadius: 999, background: color }} />
-            {label}
-          </span>
-        ))}
-      </div>
+      {legend.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 20px', fontSize: 12, color: 'var(--fg3)', fontFamily: 'var(--font-mono)', flex: 'none' }}>
+          {legend.map((entry) => (
+            <span key={entry.key} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ width: 8, height: 8, borderRadius: 999, background: entry.color, flex: 'none' }} />
+              {entry.label}
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -136,9 +132,7 @@ function MonthBoard({ cal }: { cal: CalendarModel }) {
 }
 
 function MonthDay({ cell, cal }: { cell: DayCell; cal: CalendarModel }) {
-  const event = cell.day !== null ? cal.eventsByDay[cell.day] : undefined
-  // real plan spans draw as a bottom bar strip; mock bars stay mobile-only
-  const bar = cell.bar?.planId ? cell.bar : undefined
+  const bar = cell.bar
   return (
     <div
       style={{
@@ -171,9 +165,12 @@ function MonthDay({ cell, cal }: { cell: DayCell; cal: CalendarModel }) {
       >
         {cell.n}
       </span>
-      {cell.blocks.map((b, i) => (
-        <MonthChip key={`${b.title}-${i}`} block={b} event={event && event.title === b.title ? event : undefined} cell={cell} cal={cal} />
-      ))}
+      {cell.recurring && (
+        <div style={{ ...chipStyle, background: 'var(--surface-2)' }} aria-label={`${cell.recurring.title}, all day`}>
+          <span style={{ width: 6, height: 6, borderRadius: 999, background: cell.recurring.dot, flex: 'none' }} />
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{cell.recurring.title}</span>
+        </div>
+      )}
       {cell.items.map((it) => (
         <ItemChip key={it.id} item={it} cal={cal} />
       ))}
@@ -181,7 +178,7 @@ function MonthDay({ cell, cal }: { cell: DayCell; cal: CalendarModel }) {
         <button
           type="button"
           aria-label={bar.name ?? 'Plan'}
-          onClick={() => cal.pickDay(cell)}
+          onClick={() => bar.planId && cal.openPlan(bar.planId)}
           style={{
             position: 'absolute',
             left: bar.l,
@@ -209,80 +206,72 @@ function MonthDay({ cell, cal }: { cell: DayCell; cal: CalendarModel }) {
   )
 }
 
-/** A real booked plan item as a month-cell chip: plan-colored dot, time, title. */
+const chipStyle = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 6,
+  fontSize: 12,
+  padding: '3px 6px',
+  borderRadius: 4,
+  background: 'var(--surface-2)',
+  color: 'var(--fg1)',
+  whiteSpace: 'nowrap' as const,
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  border: 'none',
+  width: '100%',
+  textAlign: 'left' as const,
+  flex: 'none',
+}
+
+/** A real booked plan item as a month-cell chip: plan-colored dot, time, title, plan badge. */
 function ItemChip({ item, cal }: { item: CalendarItem; cal: CalendarModel }) {
   return (
-    <button
-      type="button"
-      aria-label={item.title}
-      onClick={() => cal.openItemCard(item)}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 6,
-        fontSize: 12,
-        padding: '3px 6px',
-        borderRadius: 4,
-        background: 'var(--surface-2)',
-        color: 'var(--fg1)',
-        whiteSpace: 'nowrap',
-        overflow: 'hidden',
-        textOverflow: 'ellipsis',
-        border: 'none',
-        width: '100%',
-        textAlign: 'left',
-        flex: 'none',
-      }}
-    >
+    <button type="button" aria-label={`${item.title}, ${item.planName}`} title={item.planName} onClick={() => cal.openItemCard(item)} style={chipStyle}>
       <span style={{ width: 6, height: 6, borderRadius: 999, background: item.planColor, flex: 'none' }} />
       {item.time && <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--fg2)', flex: 'none' }}>{item.time}</span>}
-      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.title}</span>
+      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', flex: 1, minWidth: 0 }}>{item.title}</span>
+      <PlanBadge name={item.planName} color={item.planColor} />
     </button>
   )
 }
 
-function MonthChip({ block, event, cell, cal }: { block: CalendarBlock; event?: CalendarEvent; cell: DayCell; cal: CalendarModel }) {
-  const style = {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 6,
-    fontSize: 12,
-    padding: '3px 6px',
-    borderRadius: 4,
-    background: bgFor(block.owner),
-    color: 'var(--fg1)',
-    whiteSpace: 'nowrap' as const,
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    border: 'none',
-    width: '100%',
-    textAlign: 'left' as const,
-    flex: 'none',
-  }
-  const inner = (
-    <>
-      <span style={{ width: 6, height: 6, borderRadius: 999, background: dotFor(block.owner), flex: 'none' }} />
-      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{block.title}</span>
-    </>
-  )
-  if (!event && !cell.bar) return <div style={style}>{inner}</div>
+function PlanBadge({ name, color }: { name: string; color: string }) {
   return (
-    <button type="button" style={style} aria-label={block.title} onClick={() => (event ? cal.setOpenEvent(event) : cal.pickDay(cell))}>
-      {inner}
-    </button>
+    <span
+      style={{
+        fontFamily: 'var(--font-mono)',
+        fontSize: 8,
+        letterSpacing: '.1em',
+        textTransform: 'uppercase',
+        color,
+        border: `1px solid ${color}`,
+        padding: '0 4px',
+        borderRadius: 3,
+        flex: 'none',
+        maxWidth: 72,
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        lineHeight: '14px',
+      }}
+    >
+      {name}
+    </span>
   )
 }
 
 // -------------------------------------------------------------------- week
 
 function WeekBoard({ cal }: { cal: CalendarModel }) {
-  const { week, weekDays, hours, weekBlocks } = cal
+  const { weekDays, weekItems, hours, rowHeight } = cal
+  const firstHour = hours[0]?.h ?? 7
   return (
     <div
       style={{
         flex: 1,
         display: 'grid',
         gridTemplateColumns: `56px repeat(7,1fr)`,
+        gridTemplateRows: 'auto 1fr',
         borderTop: '1px solid var(--border)',
         minHeight: 0,
         overflow: 'hidden',
@@ -294,7 +283,16 @@ function WeekBoard({ cal }: { cal: CalendarModel }) {
           <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--fg3)' }}>
             {w.dow}
           </span>
-          <span style={{ fontFamily: 'var(--font-serif)', fontSize: 24, lineHeight: 1, color: w.today ? 'var(--accent)' : 'var(--fg1)' }}>{w.n}</span>
+          <span
+            style={{
+              fontFamily: 'var(--font-serif)',
+              fontSize: 24,
+              lineHeight: 1,
+              color: w.today ? 'var(--accent)' : w.inMonth ? 'var(--fg1)' : 'var(--fg3)',
+            }}
+          >
+            {w.n}
+          </span>
         </div>
       ))}
       <div
@@ -303,7 +301,7 @@ function WeekBoard({ cal }: { cal: CalendarModel }) {
           display: 'grid',
           gridTemplateColumns: `56px repeat(7,1fr)`,
           position: 'relative',
-          height: '100%',
+          minHeight: 0,
           overflow: 'auto',
         }}
       >
@@ -312,7 +310,7 @@ function WeekBoard({ cal }: { cal: CalendarModel }) {
             <div
               key={h.h}
               style={{
-                height: week.rowHeight,
+                height: rowHeight,
                 fontFamily: 'var(--font-mono)',
                 fontSize: 10,
                 color: 'var(--fg3)',
@@ -329,77 +327,62 @@ function WeekBoard({ cal }: { cal: CalendarModel }) {
             </div>
           ))}
         </div>
-        {weekDays.map((w) => {
-          // all-day events are not drawn in week view, and neither is anything
-          // quick-added outside the 7 AM - 7 PM rail
-          const blocks = weekBlocks.filter(
-            (b) =>
-              b.day === w.n &&
-              !b.allDay &&
-              b.start !== undefined &&
-              b.len !== undefined &&
-              b.start >= week.firstHour &&
-              b.start <= week.lastHour,
-          )
-          return (
-            <div
-              key={w.key}
-              style={{
-                position: 'relative',
-                borderLeft: '1px solid var(--border)',
-                backgroundImage: `repeating-linear-gradient(to bottom,var(--border) 0 1px,transparent 1px ${week.rowHeight}px)`,
-              }}
-            >
-              {blocks.map((b, i) => {
-                const start = b.start ?? week.firstHour
-                const len = b.len ?? 1
-                const event = cal.eventsByDay[b.day]
-                const clickable = event && event.title === b.title
-                const style = {
-                  position: 'absolute' as const,
-                  left: 4,
-                  right: 4,
-                  top: (start - week.firstHour) * week.rowHeight,
-                  height: Math.max(28, len * week.rowHeight - 4),
-                  borderRadius: 6,
-                  background: bgFor(b.owner),
-                  border: 'none',
-                  borderLeft: `1px solid ${dotFor(b.owner)}`,
-                  padding: '6px 8px',
-                  fontSize: 12,
-                  lineHeight: 1.3,
-                  overflow: 'hidden',
-                  color: 'var(--fg1)',
-                  textAlign: 'left' as const,
-                }
-                const inner = (
-                  <>
-                    <div style={{ fontWeight: 500 }}>{b.title}</div>
-                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--fg2)' }}>
-                      {fmtHour(start)} – {fmtHour(start + len)}
-                    </div>
-                  </>
-                )
-                return clickable ? (
-                  <button
-                    key={`${b.title}-${i}`}
-                    type="button"
-                    aria-label={b.title}
-                    onClick={() => cal.setOpenEvent(event)}
-                    style={style}
-                  >
-                    {inner}
-                  </button>
-                ) : (
-                  <div key={`${b.title}-${i}`} style={style}>
-                    {inner}
-                  </div>
-                )
-              })}
-            </div>
-          )
-        })}
+        {weekDays.map((w) => (
+          <div
+            key={w.key}
+            style={{
+              position: 'relative',
+              borderLeft: '1px solid var(--border)',
+              backgroundImage: `repeating-linear-gradient(to bottom,var(--border) 0 1px,transparent 1px ${rowHeight}px)`,
+            }}
+          >
+            {(weekItems[w.key] ?? []).map((it) => (
+              <WeekBlock key={it.id} item={it} firstHour={firstHour} rowHeight={rowHeight} onOpen={cal.openItemCard} />
+            ))}
+          </div>
+        ))}
       </div>
     </div>
+  )
+}
+
+/** A timed booking on the week rail, placed by its start and sized by its end (an hour when it has none). */
+function WeekBlock({ item, firstHour, rowHeight, onOpen }: { item: CalendarItem; firstHour: number; rowHeight: number; onOpen: (it: CalendarItem) => void }) {
+  const start = item.startHour ?? firstHour
+  const end = item.endHour !== undefined && item.endHour > start ? item.endHour : start + 1
+  return (
+    <button
+      type="button"
+      aria-label={`${item.title}, ${item.planName}, ${item.when}`}
+      onClick={() => onOpen(item)}
+      style={{
+        position: 'absolute',
+        left: 4,
+        right: 4,
+        top: (start - firstHour) * rowHeight,
+        height: Math.max(28, (end - start) * rowHeight - 4),
+        borderRadius: 6,
+        background: 'var(--surface-2)',
+        border: 'none',
+        borderLeft: `2px solid ${item.planColor}`,
+        padding: '6px 8px',
+        fontSize: 12,
+        lineHeight: 1.3,
+        overflow: 'hidden',
+        color: 'var(--fg1)',
+        textAlign: 'left',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 2,
+      }}
+    >
+      <div style={{ fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.title}</div>
+      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--fg2)', whiteSpace: 'nowrap' }}>
+        {item.endHour !== undefined && item.endHour > start ? `${fmtHour(start)} – ${fmtHour(item.endHour)}` : fmtHour(start)}
+      </div>
+      <div style={{ display: 'flex' }}>
+        <PlanBadge name={item.planName} color={item.planColor} />
+      </div>
+    </button>
   )
 }

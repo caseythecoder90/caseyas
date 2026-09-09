@@ -1,13 +1,17 @@
-// Route "/gallery" - mobile-a-memories.md section 4: every photo by month, or
-// albums; Select enters multi-select, Delete opens the confirm dialog and the
-// removed tiles stay gone for the session.
+// Route "/gallery" - until milestone 6 a "not yet" screen; with the
+// designPreview dev flag on, mobile-a-memories.md section 4 on mock data: every
+// photo by month, or albums; Select enters multi-select, Delete opens the
+// confirm dialog and the removed tiles stay gone for the session.
 
 import { useNavigate } from 'react-router'
-import { useGallery } from '../../data/hooks'
+import { useDesignPreview, useGallery } from '../../data/hooks'
 import type { GalleryFilter, PhotoTile } from '../../data/types'
 import { HER } from '../../people'
 import { paths } from '../../paths'
 import { Button, Chip, DANGER_LITERAL, Icon, PAPER, PHOTO_SCRIM_6, Segmented, Sheet } from '../../ui'
+import { GALLERY_ARRIVES } from '../shared/milestones'
+import { NotYetScreen } from '../shared/NotYetScreen'
+import { PreviewBanner } from '../shared/PreviewBanner'
 import { onEnter, Photo } from './bits'
 import { exitSelecting, memoriesStore, setGalFilter, setGalSeg, toggleSelected, toggleSelecting } from './state'
 import { useIsDesktop } from './useIsDesktop'
@@ -19,6 +23,19 @@ const SEGMENTS = [
 ]
 
 export default function GalleryPage() {
+  const [preview] = useDesignPreview()
+  const isDesktop = useIsDesktop()
+  if (!preview) return <NotYetScreen title="Not yet." line={GALLERY_ARRIVES} back={{ label: '← Back to Memories', to: paths.timeline }} />
+  return (
+    <>
+      <PreviewBanner style={isDesktop ? { padding: '12px 48px 0' } : undefined} />
+      <GalleryPreview />
+    </>
+  )
+}
+
+/** The designed gallery on mock data (design preview only). */
+function GalleryPreview() {
   const navigate = useNavigate()
   const isDesktop = useIsDesktop()
   const { monthsFor, deleteTiles, filters, customAlbums, autoAlbums } = useGallery()

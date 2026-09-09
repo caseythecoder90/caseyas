@@ -1,5 +1,7 @@
 // mobile-b-plans.md 2.6 / desktop.md 7.2 - the Ideas board: chip filters, a
 // card grid with both votes and the status pill, and (mobile) the vote legend.
+// Tapping a card opens the item sheet (put it on a day, edit, delete); the
+// vote badges vote. "Add an idea" leads with the title; the link is optional.
 
 import { useState } from 'react'
 import { useParams } from 'react-router'
@@ -43,11 +45,11 @@ export interface SegIdeasProps {
   filters: IdeaFilter[]
   filter: IdeaFilter
   onFilter: (f: IdeaFilter) => void
-  onPickIdea: (idea: Idea) => void
+  onOpenItem: (itemId: string) => void
   variant?: 'mobile' | 'desktop'
 }
 
-export function SegIdeas({ ideas, filters, filter, onFilter, onPickIdea, variant = 'mobile' }: SegIdeasProps) {
+export function SegIdeas({ ideas, filters, filter, onFilter, onOpenItem, variant = 'mobile' }: SegIdeasProps) {
   const desktop = variant === 'desktop'
   const { id: planId } = useParams()
   const { m } = usePlan(planId)
@@ -207,10 +209,10 @@ export function SegIdeas({ ideas, filters, filter, onFilter, onPickIdea, variant
       <div style={{ display: 'grid', gridTemplateColumns: desktop ? 'repeat(4,1fr)' : '1fr 1fr', gap: desktop ? 14 : 12 }}>
         {ideas.map((i) => (
           <button
-            key={i.title}
+            key={i.id ?? i.title}
             type="button"
-            onClick={() => onPickIdea(i)}
-            aria-label={`Put ${i.title} on a day`}
+            onClick={() => i.id && onOpenItem(i.id)}
+            aria-label={`Open ${i.title}`}
             style={{
               borderRadius: 8,
               overflow: 'hidden',
@@ -276,12 +278,15 @@ export function SegIdeas({ ideas, filters, filter, onFilter, onPickIdea, variant
 
       {!desktop && (
         <div style={{ fontSize: 12, color: 'var(--fg3)', lineHeight: 1.5 }}>
-          Votes: C = Casey, Y = {HER} · ↑ like, ~ meh, ✕ no. Long-press a card for "Put it on a day".
+          Votes: C = Casey, Y = {HER} · ↑ like, ~ meh, ✕ no. Tap a card to put it on a day.
         </div>
       )}
 
       <Sheet open={addOpen} onClose={closeAdd} title="Add an idea" aria-label="Add an idea">
-        <Field label="Link" hint={fetching ? 'fetching…' : undefined}>
+        <Field label="Title">
+          <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="What is it?" aria-label="Idea title" />
+        </Field>
+        <Field label="Link (optional)" hint={fetching ? 'fetching…' : undefined}>
           <Input
             value={url}
             onChange={(e) => setUrl(e.target.value)}
@@ -307,9 +312,6 @@ export function SegIdeas({ ideas, filters, filter, onFilter, onPickIdea, variant
             style={{ width: '100%', height: 120, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)', filter: PHOTO_FILTER }}
           />
         )}
-        <Field label="Title">
-          <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="What is it?" aria-label="Idea title" />
-        </Field>
         <Field label="City (optional)">
           <Input value={city} onChange={(e) => setCity(e.target.value)} placeholder="Tokyo, Kyoto…" aria-label="Idea city" />
         </Field>

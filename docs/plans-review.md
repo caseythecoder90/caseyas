@@ -2,6 +2,21 @@
 
 Written 2026-09-07, after milestone 2's code landed. This is a working document for reviewing the feature and deciding what happens next.
 
+## Update, 2026-09-09: what got closed
+
+Most of "Step 3" below happened in one pass. The list, so the rest of this document reads as history rather than a to-do:
+
+- **Item detail sheet exists** (`features/plans/ItemSheet.tsx`). Every item card opens it: itinerary days, the unscheduled tray, bookings, Today, the overview "next up" card, idea cards, and the desktop workspace. It shows the kind-specific fields, cost, tap-to-copy confirmation, links, attachments, notes and a comment thread, and offers Edit, Put on a day / Move, Take it off the schedule, Open in Maps and Delete. Gap categories 2 and 5 are closed.
+- **One real form for all six kinds** (`ItemForm.tsx`), in create and edit mode, with cost (amount, home or local currency, paid), place, links with preview, attachments, notes and kind specifics. No mock defaults remain anywhere in the plans feature. Budget can show a number now.
+- Items carry a free-text `notes` field on the server; `PATCH` accepts `clearEnd`; `PATCH /api/plans/{id}` accepts `localCurrency`; new plans get default checklists (trip: Before we go, Packing, Shopping; event: To do, Shopping, Guests).
+- Event plans hide Flight and Stay from the kind picker. Plans can be edited and deleted from the More menu. The plans list has a real search filter.
+- Today mode shows a real clock in the plan's timezone and a working Tomorrow.
+- Deferred features are labelled in place (map tiles, locked note, confirmation parser: milestone 6). The locked-note teaser no longer shows invented passport numbers.
+- `planViews.ts` has 67 Vitest unit tests (`npm test`, also in CI).
+- The Calendar shows only real plan data (bars, booked items, the anniversary); its own events wait for milestone 5. Memories, Chat, Notes and the rest of Us are honest empty states by default; a "Design preview data" toggle under Us → Developer brings the design's placeholder screens back for reference.
+
+Still open from the analysis below: reorder within a day (`POST …/reorder` is built but unused), offline caching of document bytes through the service worker, and the desktop drag versus mobile tap interaction model being two different things.
+
 **The short version.** The backend is complete for milestone 2 — every endpoint the architecture declares exists and is tested. The frontend problem is not broken code; it is **missing screens**. Specifically: you cannot tap an item to view, edit or delete it, because **the design prototype never drew that screen**. Everything else you noticed follows from that hole or is correctly deferred to a later milestone.
 
 Read this in four passes, in this order. Each one gives you the vocabulary for the next.

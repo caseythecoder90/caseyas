@@ -165,6 +165,17 @@ export interface AgendaRow {
   planId?: PlanId
   eventDay?: number
 }
+/** A yearly all-day date the calendar always knows (the anniversary), until the events collection lands in milestone 5. */
+export interface RecurringDay {
+  key: string
+  month: number // 1-12
+  day: number
+  title: string
+  /** 'Oct 18 · every year' */
+  sub: string
+  /** token var() for the dot */
+  dot: string
+}
 export interface PlanBar {
   bg: string
   label: string
@@ -196,6 +207,8 @@ export interface Plan {
   end?: string
 }
 export interface OverviewHero {
+  /** server item id of the "next up" item, when there is one */
+  id?: string
   num: string
   line: string
   kind: 'flight' | 'last' | 'reservation'
@@ -315,6 +328,8 @@ export interface PlanDoc {
   thumb?: string
 }
 export interface MapPin {
+  /** server item id, for "Directions" */
+  id?: string
   kind: ItemKind
   title: string
   place: string
@@ -323,6 +338,10 @@ export interface MapPin {
   y: number
 }
 export interface TodayItem {
+  /** server item id; absent on mock rows */
+  id?: string
+  /** ISO local date-time at the destination, for the "next · in 2h" countdown */
+  start?: string
   time: string
   kind: ItemKind
   title: string

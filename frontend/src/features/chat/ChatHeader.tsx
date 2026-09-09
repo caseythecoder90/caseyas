@@ -1,6 +1,8 @@
 // Mobile chat header (mobile-c section 2): 36px avatar, her name in serif 22,
 // "Active now" in green, and the Messages / Notes segmented control. The
-// segments are routes on mobile: /chat and /notes.
+// segments are routes on mobile: /chat and /notes. `status` is the presence
+// line; the honest (pre-milestone 4) header passes null since there is no
+// presence to report yet.
 
 import { useNavigate } from 'react-router'
 import { mockImage } from '../../data/mockImage'
@@ -10,7 +12,7 @@ import { CHAT_STATUS } from './copy'
 
 export type ChatSegKey = 'msgs' | 'notes'
 
-export function ChatHeader({ seg, hasUnopened }: { seg: ChatSegKey; hasUnopened: boolean }) {
+export function ChatHeader({ seg, hasUnopened, status = CHAT_STATUS }: { seg: ChatSegKey; hasUnopened: boolean; status?: string | null }) {
   const navigate = useNavigate()
   return (
     <div
@@ -33,7 +35,7 @@ export function ChatHeader({ seg, hasUnopened }: { seg: ChatSegKey; hasUnopened:
         </span>
         <div>
           <div style={{ fontFamily: 'var(--font-serif)', fontSize: 22, lineHeight: 1 }}>{HER}</div>
-          <div style={{ fontSize: 12, color: 'var(--green)', marginTop: 2 }}>{CHAT_STATUS}</div>
+          {status && <div style={{ fontSize: 12, color: 'var(--green)', marginTop: 2 }}>{status}</div>}
         </div>
       </div>
       <nav aria-label="Chat sections" style={{ display: 'flex', gap: 2, padding: 2, borderRadius: 6, background: 'var(--surface-2)', fontSize: 13 }}>

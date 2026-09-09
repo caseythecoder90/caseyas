@@ -2,10 +2,13 @@
 // a 6px blur until tapped, re-locking after 60 seconds as the footnote promises.
 
 import { useEffect, useState } from 'react'
-import { LOCKED_FOOTNOTE, LOCKED_LINES } from '../../data/mock'
 import { LOCK_ICON } from './bits'
 
 const RELOCK_MS = 60_000
+
+/** What the note is for, not anyone's numbers: the real note arrives with milestone 6. */
+const LOCKED_LINES = ['Passport numbers and expiry dates', 'Embassy and emergency contacts', 'Travel insurance policy', 'Nothing saved here yet']
+const LOCKED_FOOTNOTE = 'Hidden from offline copies and exports. Re-locks after 60 seconds.'
 
 export function SegLocked({ variant = 'mobile' }: { variant?: 'mobile' | 'desktop' }) {
   const desktop = variant === 'desktop'
@@ -79,7 +82,7 @@ export function SegLocked({ variant = 'mobile' }: { variant?: 'mobile' | 'deskto
         )}
       </button>
       <div style={{ fontSize: 12, color: 'var(--fg3)', lineHeight: 1.5 }}>{LOCKED_FOOTNOTE}</div>
-      <div style={{ fontSize: 12, color: 'var(--fg3)', lineHeight: 1.5 }}>The real locked note arrives with milestone 6.</div>
+      <div style={{ fontSize: 12, color: 'var(--fg3)', lineHeight: 1.5 }}>The locked note arrives with milestone 6</div>
     </div>
   )
 }

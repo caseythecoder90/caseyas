@@ -1,24 +1,36 @@
 // Us (mobile-c spec section 5, prototype lines 634-682): profiles, Together
-// since, stats, Security (the five static rows plus the account-console
-// hand-off), Preferences (theme / currency / timezone), Notifications (three
-// switches + the per-plan checkboxes), the off-by-default opt-ins, Storage /
-// Export, a dev-only Simulate date row, and "Lock now" — the real POST /logout.
+// since, stats, Security, Preferences (theme / currency / timezone),
+// Notifications (three switches + the per-plan checkboxes), the off-by-default
+// opt-ins, the Developer card (Simulate date in dev builds, the Design preview
+// switch) and "Lock now" — the real POST /logout.
+//
+// Honest by default: everything shown is real (session name, theme, local
+// preferences, the account-console link, plan counts and days together from
+// usePlans / the clock). With the design preview on, the mock stats, the five
+// Security status rows and the Storage / Export card render as designed,
+// behind the "Design preview" banner.
 //
 // Layout: the prototype's `padding:8px 20px 110px; gap:28px` column below md.
 // At >= md, desktop.md section 8 ("Notes / Us placeholder", and line 42) asks
 // for the isOther placeholder instead, so that is what renders there.
 
-import type { CSSProperties, KeyboardEvent } from 'react'
-import { usePreferences } from '../../data/hooks'
+import { useMemo, type CSSProperties, type KeyboardEvent } from 'react'
+import { daysBetween } from '../../data/dates'
+import { useDesignPreview, usePlans, usePreferences } from '../../data/hooks'
 import { OPT_INS_HEADER, PLAN_NOTIF_HEADER, US_STATIC } from '../../data/mock/us'
+import type { Stat } from '../../data/types'
 import { SignOutButton } from '../../session'
 import { useTheme, type ResolvedTheme, type ThemeChoice } from '../../theme'
-import { DESKTOP_PLACEHOLDER } from './copy'
+import { PUSH_ARRIVES } from '../shared/milestones'
+import { PreviewBanner } from '../shared/PreviewBanner'
+import { DESKTOP_PLACEHOLDER, TOGETHER_SINCE_ISO } from './copy'
+import { DeveloperSection } from './DeveloperSection'
 import { Profiles } from './Profiles'
 import { SecurityCard } from './SecurityCard'
 import { CheckRow, HAIRLINE, MonoValue, Row, Section, ToggleRow } from './SettingsRows'
-import { SimulateDate } from './SimulateDate'
 import { useIsDesktop } from './useIsDesktop'
+
+const NO_ROWS: never[] = []
 
 /** desktop.md section 8: centered full-height column, gap 12, serif 40px title. */
 function DesktopPlaceholder() {
@@ -101,16 +113,30 @@ export default function UsPage() {
   const { prefs, toggleNotif, togglePlanNotif, toggleOptIn, notifRows, planNotifChips, optIns, stats, security, simDate, setSimDate, simOptions } =
     usePreferences()
   const { resolved, setTheme } = useTheme()
+  const [preview] = useDesignPreview()
+  const { plans, today, loading } = usePlans()
+
+  // The numbers the app can actually stand behind: plans, trips, days together.
+  const realStats = useMemo<Stat[]>(() => {
+    if (loading) return []
+    const trips = plans.filter((p) => p.type === 'Trip').length
+    return [
+      { n: String(plans.length), l: plans.length === 1 ? 'plan' : 'plans' },
+      { n: String(trips), l: trips === 1 ? 'trip' : 'trips' },
+      { n: String(Math.max(0, daysBetween(TOGETHER_SINCE_ISO, today))), l: 'days' },
+    ]
+  }, [plans, today, loading])
 
   if (isDesktop) return <DesktopPlaceholder />
 
   return (
     <div className="pt-2 px-5 pb-[110px]" style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 28 }}>
+      <PreviewBanner style={{ padding: 0 }} />
       <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: 36, lineHeight: 1, fontWeight: 400, margin: 0 }}>Us</h1>
 
-      <Profiles stats={stats} />
+      <Profiles stats={preview ? stats : realStats} preview={preview} />
 
-      <SecurityCard rows={security} />
+      <SecurityCard rows={preview ? security : NO_ROWS} />
 
       <Section eyebrow="Preferences">
         <Row divider={false} gap={12} label={US_STATIC.themeLabel} right={<ThemeSwitch resolved={resolved} setTheme={setTheme} />} />
@@ -132,6 +158,7 @@ export default function UsPage() {
             <CheckRow key={key} label={label} on={prefs.planNotif[key]} onToggle={() => togglePlanNotif(key)} />
           ))}
         </div>
+        <div style={{ padding: '10px 16px 12px', borderTop: HAIRLINE, fontSize: 12, color: 'var(--fg3)' }}>{PUSH_ARRIVES}</div>
       </Section>
 
       <Section eyebrow={OPT_INS_HEADER}>
@@ -140,20 +167,22 @@ export default function UsPage() {
         ))}
       </Section>
 
-      <Section>
-        <Row
-          divider={false}
-          label={US_STATIC.storage.label}
-          right={
-            <MonoValue size={11} color="var(--fg3)">
-              {US_STATIC.storage.value}
-            </MonoValue>
-          }
-        />
-        <Row label={US_STATIC.export.label} right={<span style={{ color: 'var(--fg3)' }}>→</span>} />
-      </Section>
+      {preview && (
+        <Section>
+          <Row
+            divider={false}
+            label={US_STATIC.storage.label}
+            right={
+              <MonoValue size={11} color="var(--fg3)">
+                {US_STATIC.storage.value}
+              </MonoValue>
+            }
+          />
+          <Row label={US_STATIC.export.label} right={<span style={{ color: 'var(--fg3)' }}>→</span>} />
+        </Section>
+      )}
 
-      {import.meta.env.DEV && <SimulateDate simDate={simDate} setSimDate={setSimDate} simOptions={simOptions} />}
+      <DeveloperSection simDate={simDate} setSimDate={setSimDate} simOptions={simOptions} />
 
       <SignOutButton label={US_STATIC.lockNow} />
     </div>

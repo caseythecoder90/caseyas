@@ -1,12 +1,13 @@
 // mobile-c-chat-calendar-notes-us.md section 4 (lines 578-604 of the mobile
 // prototype): month title + Month/Agenda toggle, quick-add row, weekday header,
-// the 7-column month grid with owner dots and the Lake weekend plan bar, the
-// legend, then Upcoming.
+// the 7-column month grid, the legend, then Upcoming. Everything drawn is real:
+// plan spanning bars and booked items from the plans api, the anniversary as
+// a yearly all-day dot. The quick-add field is disabled until milestone 5.
 
 import type { Ref } from 'react'
-import { Eyebrow, PAPER, dotFor } from '../../ui'
-import { QUICK_ADD_PLACEHOLDER } from '../../data/mock'
-import { QuickAdd } from './QuickAdd'
+import { Eyebrow, PAPER } from '../../ui'
+import { CalendarEmpty } from './CalendarEmpty'
+import { QUICK_ADD_DISABLED_PLACEHOLDER, QuickAdd } from './QuickAdd'
 import type { CalendarAgendaRow, CalendarModel, DayCell } from './calendarModel'
 
 const WEEKDAYS = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU']
@@ -59,7 +60,7 @@ export function MobileCalendar({ cal, quickAddRef }: { cal: CalendarModel; quick
         </div>
       </div>
 
-      <QuickAdd placeholder={QUICK_ADD_PLACEHOLDER} onSubmit={cal.quickAdd} inputRef={quickAddRef} style={{ margin: '16px 20px 0' }} />
+      <QuickAdd placeholder={QUICK_ADD_DISABLED_PLACEHOLDER} disabled inputRef={quickAddRef} style={{ margin: '16px 20px 0' }} />
 
       {monthView && (
         <>
@@ -86,31 +87,40 @@ export function MobileCalendar({ cal, quickAddRef }: { cal: CalendarModel; quick
             ))}
           </div>
 
-          <div
-            style={{
-              display: 'flex',
-              gap: 14,
-              padding: '12px 20px 0',
-              fontSize: 11,
-              color: 'var(--fg3)',
-              fontFamily: 'var(--font-mono)',
-            }}
-          >
-            {legend.map(([label, color]) => (
-              <span key={label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                <span style={{ width: 6, height: 6, borderRadius: 999, background: color }} />
-                {label}
-              </span>
-            ))}
-          </div>
+          {legend.length > 0 && (
+            <div
+              style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: '6px 14px',
+                padding: '12px 20px 0',
+                fontSize: 11,
+                color: 'var(--fg3)',
+                fontFamily: 'var(--font-mono)',
+              }}
+            >
+              {legend.map((entry) => (
+                <span key={entry.key} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <span style={{ width: 6, height: 6, borderRadius: 999, background: entry.color, flex: 'none' }} />
+                  {entry.label}
+                </span>
+              ))}
+            </div>
+          )}
         </>
       )}
 
       <div style={{ padding: '20px 20px 110px', display: 'flex', flexDirection: 'column' }}>
-        <Eyebrow style={{ marginBottom: 8 }}>Upcoming</Eyebrow>
-        {cal.rows.map((row) => (
-          <AgendaRowView key={row.key} row={row} onPick={cal.pickRow} />
-        ))}
+        {cal.rows.length === 0 ? (
+          <CalendarEmpty eyebrow="Upcoming" />
+        ) : (
+          <>
+            <Eyebrow style={{ marginBottom: 8 }}>Upcoming</Eyebrow>
+            {cal.rows.map((row) => (
+              <AgendaRowView key={row.key} row={row} onPick={cal.pickRow} />
+            ))}
+          </>
+        )}
       </div>
     </div>
   )
@@ -154,17 +164,18 @@ function MonthCell({ cell, monthName, onPick }: { cell: DayCell; monthName: stri
   }
   if (cell.blank) return <div style={base} />
 
-  const e = cell.event
   const item = cell.items[0]
-  // real booked items reuse the event dot slot, in their plan's color
-  const dot1 = e ? (e.owner === 'b' ? 'var(--accent)' : dotFor(e.owner)) : item ? item.planColor : 'transparent'
-  const dot2 = e && e.owner === 'b' ? 'var(--green)' : 'transparent'
-  const selectable = !e && !item && !cell.bar
+  const yearly = cell.recurring
+  // the design's event dot slot: a booked item in its plan's color, the
+  // anniversary in the "both" color, otherwise nothing
+  const dot1 = item ? item.planColor : yearly ? yearly.dot : 'transparent'
+  const dot2 = item && cell.items.length > 1 ? cell.items[1].planColor : 'transparent'
+  const selectable = !item && !cell.bar?.planId
   const parts = [`${monthName} ${cell.n}`]
   if (cell.today) parts.push('today')
-  if (e) parts.push(e.title)
-  if (!e && item) parts.push(item.title)
-  if (!e && !item && cell.bar) parts.push(cell.bar.label || cell.bar.name || 'Lake weekend')
+  if (item) parts.push(cell.items.length > 1 ? `${item.title} and ${cell.items.length - 1} more` : item.title)
+  if (yearly) parts.push(yearly.title)
+  if (!item && cell.bar) parts.push(cell.bar.name ?? cell.bar.label)
 
   return (
     <button
@@ -175,7 +186,7 @@ function MonthCell({ cell, monthName, onPick }: { cell: DayCell; monthName: stri
       style={{
         ...base,
         border: 'none',
-        background: e || item ? 'var(--surface)' : 'transparent',
+        background: item || yearly ? 'var(--surface)' : 'transparent',
         color: 'inherit',
         boxShadow: cell.selected && selectable ? 'inset 0 0 0 1px var(--accent)' : undefined,
       }}
@@ -229,7 +240,7 @@ function MonthCell({ cell, monthName, onPick }: { cell: DayCell; monthName: stri
 }
 
 function AgendaRowView({ row, onPick }: { row: CalendarAgendaRow; onPick: (r: CalendarAgendaRow) => void }) {
-  const clickable = !!row.event || !!row.planId
+  const clickable = !!row.item || !!row.planId
   const style = {
     display: 'grid',
     gridTemplateColumns: '44px 1fr auto',
@@ -252,9 +263,9 @@ function AgendaRowView({ row, onPick }: { row: CalendarAgendaRow; onPick: (r: Ca
         </div>
       </div>
       <div style={{ minWidth: 0 }}>
-        <div style={{ fontSize: 15, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ fontSize: 15, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
           <span style={{ width: 6, height: 6, borderRadius: 999, background: row.dot, flex: 'none' }} />
-          {row.title}
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.title}</span>
           {row.plan && (
             <span
               style={{
@@ -266,6 +277,8 @@ function AgendaRowView({ row, onPick }: { row: CalendarAgendaRow; onPick: (r: Ca
                 border: `1px solid ${row.dot}`,
                 padding: '1px 5px',
                 borderRadius: 3,
+                flex: 'none',
+                whiteSpace: 'nowrap',
               }}
             >
               {row.plan}

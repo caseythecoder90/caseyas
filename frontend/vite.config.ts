@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
@@ -41,5 +42,10 @@ export default defineConfig({
     proxy: Object.fromEntries(
       backendPaths.map((p) => [p, { target: backend, changeOrigin: false, ws: p === '/ws' }]),
     ),
+  },
+  // Unit tests for the pure modules (data/planViews, data/dates): `npm test`.
+  test: {
+    environment: 'node',
+    include: ['src/**/*.test.ts'],
   },
 })

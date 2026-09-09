@@ -11,3 +11,7 @@ Rules
   component here, a primitive in `src/ui/`, or a hook in `src/data/`.
 - `StubScreen.tsx` is the placeholder every route renders until its screen exists;
   replace the contents of the feature entry file, not the route table.
+- `NotYetScreen.tsx` is the calm "not yet" screen for a built route whose milestone has
+  not landed (memory detail, gallery, composer): the milestone line plus one link back.
+- `PreviewBanner.tsx` renders the "Design preview · placeholder data" line only while the
+  `designPreview` dev flag is on; `milestones.ts` holds the milestone numbers and copy.

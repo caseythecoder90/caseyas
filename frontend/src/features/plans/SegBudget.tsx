@@ -1,47 +1,62 @@
 // mobile-b-plans.md 2.9 / desktop.md 7.2 - Budget: three totals in both
-// currencies, category rows, and the editable USD -> JPY rate.
+// currencies, category rows, and the plan's manual exchange rate (home ->
+// local, from the plan's currency record). Typing a rate and leaving the
+// field saves it through m.setRate; there is no live FX lookup by design
+// (architecture section 7, "a rate typed once is accurate enough").
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams } from 'react-router'
-import { BUDGET_RATE_NOTE } from '../../data/mock'
 import { usePlan } from '../../data/hooks'
 import type { Budget } from '../../data/types'
 import { Bar } from './bits'
 
-// "set by you on Sep 6 · use today’s rate" — the second half is the reset link.
-const [RATE_SET_BY = '', RATE_RESET = ''] = BUDGET_RATE_NOTE.split(' · ')
-const RATE_RESET_LABEL = RATE_RESET.charAt(0).toUpperCase() + RATE_RESET.slice(1)
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
-const LINK_BUTTON = {
-  font: 'inherit',
-  color: 'var(--accent)',
-  border: 'none',
-  background: 'transparent',
-  padding: 0,
-  cursor: 'pointer',
-} as const
+function setByLine(rateSetAt?: string | null): string {
+  if (!rateSetAt) return 'no rate yet · type one to see local totals'
+  const d = new Date(rateSetAt)
+  if (Number.isNaN(d.getTime())) return 'set by hand'
+  return `set by hand on ${MONTHS[d.getMonth()]} ${d.getDate()}`
+}
 
 export function SegBudget({ budget, variant = 'mobile' }: { budget: Budget; variant?: 'mobile' | 'desktop' }) {
   const desktop = variant === 'desktop'
   const { id } = useParams()
-  const { m } = usePlan(id)
+  const { serverPlan, m } = usePlan(id)
+  const home = serverPlan?.currency?.home ?? 'USD'
+  const local = serverPlan?.currency?.local ?? null
+
   const [rate, setRate] = useState(budget.rate)
+  const [busy, setBusy] = useState(false)
   const [savedNow, setSavedNow] = useState(false)
   const [rateError, setRateError] = useState<string | null>(null)
 
+  // follow the server once it answers (the first render may be the skeleton)
+  useEffect(() => {
+    setRate(budget.rate)
+  }, [budget.rate])
+
   const commitRate = async () => {
-    const parsed = parseFloat(rate)
-    if (!Number.isFinite(parsed) || parsed <= 0 || String(parsed) === budget.rate) return
+    const text = rate.trim()
+    if (text === budget.rate || busy) return
+    const parsed = Number(text)
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      setRateError('Enter a number above zero.')
+      return
+    }
     setRateError(null)
+    setBusy(true)
     try {
       await m.setRate(parsed)
       setSavedNow(true)
     } catch {
       setRateError('Could not save the rate.')
+    } finally {
+      setBusy(false)
     }
   }
 
-  const setByLine = savedNow ? 'set by you just now' : RATE_SET_BY
+  const note = busy ? 'saving…' : savedNow ? 'set by hand just now' : setByLine(serverPlan?.currency?.rateSetAt)
 
   const totals = [
     { l: 'Planned', usd: budget.planned, jpy: budget.plannedJpy },
@@ -61,41 +76,49 @@ export function SegBudget({ budget, variant = 'mobile' }: { budget: Budget; vari
     </div>
   )
 
-  const rowsBlock = (
-    <div style={{ display: 'flex', flexDirection: 'column' }}>
-      {budget.rows.map(([k, v, pct]) => (
-        <div
-          key={k}
-          style={{
-            display: 'grid',
-            gridTemplateColumns: desktop ? '120px 1fr auto' : '90px 1fr auto',
-            gap: desktop ? 16 : 12,
-            alignItems: 'center',
-            padding: desktop ? '12px 0' : '10px 0',
-            borderTop: '1px solid var(--border)',
-            fontSize: 14,
-          }}
-        >
-          <span>{k}</span>
-          <Bar pct={`${pct}%`} height={4} />
-          <span style={{ fontFamily: 'var(--font-mono)', fontSize: desktop ? 13 : 12 }}>{v}</span>
-        </div>
-      ))}
-    </div>
-  )
+  const rowsBlock =
+    budget.rows.length === 0 ? (
+      <div style={{ fontSize: 13, color: 'var(--fg3)', lineHeight: 1.5 }}>Nothing costed yet. Add a cost to any item and it lands here.</div>
+    ) : (
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
+        {budget.rows.map(([k, v, pct]) => (
+          <div
+            key={k}
+            style={{
+              display: 'grid',
+              gridTemplateColumns: desktop ? '120px 1fr auto' : '90px 1fr auto',
+              gap: desktop ? 16 : 12,
+              alignItems: 'center',
+              padding: desktop ? '12px 0' : '10px 0',
+              borderTop: '1px solid var(--border)',
+              fontSize: 14,
+            }}
+          >
+            <span>{k}</span>
+            <Bar pct={`${pct}%`} height={4} />
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: desktop ? 13 : 12 }}>{v}</span>
+          </div>
+        ))}
+      </div>
+    )
 
   const rateInput = (
     <input
       value={rate}
-      onChange={(e) => setRate(e.target.value)}
+      onChange={(e) => {
+        setRate(e.target.value)
+        setSavedNow(false)
+      }}
       onBlur={() => void commitRate()}
       onKeyDown={(e) => {
         if (e.key === 'Enter') void commitRate()
       }}
-      aria-label="Exchange rate, JPY per USD"
+      disabled={busy || !local}
+      aria-label={`Exchange rate, ${local ?? 'local'} per ${home}`}
       inputMode="decimal"
+      placeholder="—"
       style={{
-        width: 64,
+        width: 72,
         border: 'none',
         borderBottom: '1px solid var(--border)',
         background: 'transparent',
@@ -104,8 +127,21 @@ export function SegBudget({ budget, variant = 'mobile' }: { budget: Budget; vari
         color: 'var(--fg1)',
         padding: '2px 0',
         borderRadius: 0,
+        textAlign: 'center',
       }}
     />
+  )
+
+  const rateCard = local ? (
+    <>
+      <div style={{ fontSize: 14 }}>
+        1 {home} = {rateInput} {local}
+      </div>
+      <div style={{ fontSize: 12, color: 'var(--fg3)', marginTop: 4 }}>{note}</div>
+      {rateError && <div style={{ fontSize: 12, color: 'var(--danger)', marginTop: 4 }}>{rateError}</div>}
+    </>
+  ) : (
+    <div style={{ fontSize: 12, color: 'var(--fg3)', lineHeight: 1.5 }}>Totals in {home}. A local currency is picked when a plan is created.</div>
   )
 
   if (desktop) {
@@ -115,16 +151,7 @@ export function SegBudget({ budget, variant = 'mobile' }: { budget: Budget; vari
           {totalsBlock}
           {rowsBlock}
         </div>
-        <div style={{ padding: '16px 18px', borderRadius: 8, border: '1px solid var(--border)', alignSelf: 'start' }}>
-          <div style={{ fontSize: 14 }}>1 USD = {rateInput} JPY</div>
-          <div style={{ fontSize: 12, color: 'var(--fg3)', marginTop: 4 }}>
-            {setByLine} ·{' '}
-            <button type="button" onClick={() => setRate(budget.rate)} style={LINK_BUTTON}>
-              {RATE_RESET}
-            </button>
-          </div>
-          {rateError && <div style={{ fontSize: 12, color: 'var(--danger)', marginTop: 4 }}>{rateError}</div>}
-        </div>
+        <div style={{ padding: '16px 18px', borderRadius: 8, border: '1px solid var(--border)', alignSelf: 'start' }}>{rateCard}</div>
       </div>
     )
   }
@@ -133,16 +160,7 @@ export function SegBudget({ budget, variant = 'mobile' }: { budget: Budget; vari
     <div style={{ padding: '20px 20px 0', display: 'flex', flexDirection: 'column', gap: 24 }}>
       {totalsBlock}
       {rowsBlock}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderRadius: 8, border: '1px solid var(--border)', gap: 12 }}>
-        <div>
-          <div style={{ fontSize: 14 }}>1 USD = {rateInput} JPY</div>
-          <div style={{ fontSize: 12, color: 'var(--fg3)', marginTop: 2 }}>{setByLine}</div>
-          {rateError && <div style={{ fontSize: 12, color: 'var(--danger)', marginTop: 2 }}>{rateError}</div>}
-        </div>
-        <button type="button" onClick={() => setRate(budget.rate)} style={{ ...LINK_BUTTON, fontSize: 13, whiteSpace: 'nowrap' }}>
-          {RATE_RESET_LABEL}
-        </button>
-      </div>
+      <div style={{ padding: '12px 14px', borderRadius: 8, border: '1px solid var(--border)' }}>{rateCard}</div>
     </div>
   )
 }

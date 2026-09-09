@@ -1,17 +1,23 @@
 // mobile-b-plans.md section 2 (mobile) and desktop.md section 7 (>= md).
 // Cover + title block + segmented row on mobile; a 200px cover band, a full tab
-// strip and the three-column itinerary workspace on desktop.
+// strip and the three-column itinerary workspace on desktop. Owns the sheets
+// every segment shares: the item sheet (any card opens it), the add-item flow,
+// the edit form the desktop workspace's "Edit" reaches directly, the More menu
+// and the plan-level edit / delete.
 
-import { useCallback, useMemo, useState } from 'react'
-import { Link, useParams, useSearchParams } from 'react-router'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
 import { MORE_LABELS } from '../../data/mock'
 import { usePlan } from '../../data/hooks'
 import { paramFromSeg, paths, segFromParam } from '../../paths'
-import type { BookingForm, Idea, IdeaFilter, PlanSeg } from '../../data/types'
+import type { BookingForm, PlanSeg } from '../../data/types'
 import { Icon, PAPER, PHOTO_SCRIM_5, segTab } from '../../ui'
 import { AddItemSheets } from './AddItemSheets'
 import { CoverImage, DestChip, PlanAvatars } from './bits'
-import { MoreSheet, PutOnADaySheet } from './MoreSheet'
+import { ItemForm, formKindOf } from './ItemForm'
+import { ItemSheet } from './ItemSheet'
+import { MoreSheet } from './MoreSheet'
+import { DeletePlanSheet, PlanEditSheet } from './PlanEditSheet'
 import { PlanDesktop } from './PlanDesktop'
 import { SegBookings } from './SegBookings'
 import { SegBudget } from './SegBudget'
@@ -25,11 +31,10 @@ import { SegOverview } from './SegOverview'
 import { usePlanBoard } from './usePlanBoard'
 import { useIsDesktop } from './useIsDesktop'
 
-type PutTarget = { kind: 'tray'; index: number } | { kind: 'idea'; idea: Idea }
-
 export default function PlanDetailPage() {
   const { id } = useParams()
   const isDesktop = useIsDesktop()
+  const navigate = useNavigate()
   const [params, setParams] = useSearchParams()
   const p = usePlan(id)
   const board = usePlanBoard(p.plan.id, p.days, p.unscheduled, p.ideas)
@@ -38,8 +43,11 @@ export default function PlanDetailPage() {
   const [moreOpen, setMoreOpen] = useState(false)
   const [form, setForm] = useState<BookingForm>(null)
   const [formDay, setFormDay] = useState(1)
-  const [ideaFilter, setIdeaFilter] = useState<IdeaFilter>('All')
-  const [put, setPut] = useState<PutTarget | null>(null)
+  const [ideaFilter, setIdeaFilter] = useState('All')
+  const [openItem, setOpenItem] = useState<string | null>(null)
+  const [editItem, setEditItem] = useState<string | null>(null)
+  const [planEdit, setPlanEdit] = useState(false)
+  const [planDelete, setPlanDelete] = useState(false)
 
   const segParam = params.get('seg')
   const seg: PlanSeg = segParam ? segFromParam(segParam) : isDesktop ? 'itinerary' : 'overview'
@@ -61,17 +69,6 @@ export default function PlanDetailPage() {
     setForm('kinds')
   }, [])
 
-  const confirmPut = useCallback(
-    (dayN: number) => {
-      if (!put) return
-      if (put.kind === 'tray') board.scheduleUnscheduled(put.index, dayN)
-      else board.scheduleIdea(put.idea, dayN)
-      setPut(null)
-      setSeg('itinerary')
-    },
-    [put, board, setSeg],
-  )
-
   const toggleOffline = useCallback(async () => {
     if (offlineBusy) return
     setOfflineBusy(true)
@@ -84,10 +81,39 @@ export default function PlanDetailPage() {
     }
   }, [offlineBusy, p.offline])
 
+  // keep the last edited item through the form's 200ms close
+  const lastEdited = useRef<(typeof p.serverItems)[number] | null>(null)
+  const editingNow = editItem ? p.serverItems.find((i) => i.id === editItem) ?? null : null
+  useEffect(() => {
+    if (editingNow) lastEdited.current = editingNow
+  }, [editingNow])
+  const editing = editingNow ?? lastEdited.current
+
   const sheets = (
     <>
-      <AddItemSheets form={form} dayN={formDay} onSetForm={setForm} onClose={() => setForm(null)} />
-      <PutOnADaySheet open={!!put} onClose={() => setPut(null)} days={board.days} onPick={confirmPut} />
+      <AddItemSheets form={form} dayN={formDay} onSetForm={setForm} onClose={() => setForm(null)} isEvent={p.isEvent} />
+      <ItemSheet itemId={openItem} onClose={() => setOpenItem(null)} />
+      {editing && <ItemForm open={!!editingNow} kind={formKindOf(editing)} editing={editing} onClose={() => setEditItem(null)} />}
+      <MoreSheet
+        open={moreOpen}
+        onClose={() => setMoreOpen(false)}
+        items={isDesktop ? [] : p.moreItems}
+        onPick={(s) => {
+          setSeg(s)
+          setMoreOpen(false)
+        }}
+        onAllPlans={isDesktop ? () => navigate(paths.plans) : undefined}
+        onEditPlan={() => {
+          setMoreOpen(false)
+          setPlanEdit(true)
+        }}
+        onDeletePlan={() => {
+          setMoreOpen(false)
+          setPlanDelete(true)
+        }}
+      />
+      <PlanEditSheet open={planEdit} onClose={() => setPlanEdit(false)} />
+      <DeletePlanSheet open={planDelete} onClose={() => setPlanDelete(false)} />
     </>
   )
 
@@ -133,6 +159,7 @@ export default function PlanDetailPage() {
           budget={p.budget}
           tripDays={p.days.length}
           onSeg={setSeg}
+          onOpenItem={setOpenItem}
         />
       )}
       {seg === 'itinerary' && (
@@ -141,19 +168,11 @@ export default function PlanDetailPage() {
           unscheduled={board.unscheduled}
           onAddToDay={openKinds}
           onDropOnDay={(i, n) => board.scheduleUnscheduled(i, n)}
-          onPickTrayItem={(index) => setPut({ kind: 'tray', index })}
+          onOpenItem={setOpenItem}
         />
       )}
-      {seg === 'ideas' && (
-        <SegIdeas
-          ideas={ideas}
-          filters={p.ideaFilters}
-          filter={ideaFilter}
-          onFilter={setIdeaFilter}
-          onPickIdea={(idea) => setPut({ kind: 'idea', idea })}
-        />
-      )}
-      {seg === 'bookings' && <SegBookings bookings={p.bookings} />}
+      {seg === 'ideas' && <SegIdeas ideas={ideas} filters={p.ideaFilters} filter={ideaFilter} onFilter={setIdeaFilter} onOpenItem={setOpenItem} />}
+      {seg === 'bookings' && <SegBookings bookings={p.bookings} onOpenItem={setOpenItem} />}
       {seg === 'lists' && <SegChecklists lists={p.lists} onToggle={p.toggleTick} />}
       {seg === 'budget' && <SegBudget budget={p.budget} />}
       {seg === 'docs' && <SegDocs docs={p.docs} onUpload={p.m.upload} />}
@@ -173,10 +192,9 @@ export default function PlanDetailPage() {
           ideas={ideas}
           ideaFilter={ideaFilter}
           onIdeaFilter={setIdeaFilter}
-          offline={p.offline.enabled}
-          onOffline={() => void toggleOffline()}
-          onPickIdea={(idea) => setPut({ kind: 'idea', idea })}
-          onPickTrayItem={(index) => setPut({ kind: 'tray', index })}
+          onOpenItem={setOpenItem}
+          onEditItem={setEditItem}
+          onPlanMenu={() => setMoreOpen(true)}
         />
         {sheets}
       </>
@@ -220,7 +238,7 @@ export default function PlanDetailPage() {
           </Link>
           <button
             type="button"
-            aria-label="Plan sections"
+            aria-label="Plan sections and actions"
             onClick={() => setMoreOpen(true)}
             style={{
               width: 36,
@@ -355,15 +373,6 @@ export default function PlanDetailPage() {
 
       {segmentBody}
 
-      <MoreSheet
-        open={moreOpen}
-        onClose={() => setMoreOpen(false)}
-        items={p.moreItems}
-        onPick={(s) => {
-          setSeg(s)
-          setMoreOpen(false)
-        }}
-      />
       {sheets}
     </section>
   )

@@ -1,11 +1,14 @@
 // Desktop sidebar (desktop.md section 1.1): wordmark, New button + menu, nav
 // rows with badges, the Upcoming widget with the Next trip card, couple footer.
+// Upcoming and the Next trip card read the real plans (usePlans): the next two
+// dated plans, and the nearest trip (or the one underway). Badges come from
+// useChat and are 0 until milestone 4 unless the design preview is on.
 
 import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
-import { JAPAN_START, LAKE_START, countdown, daysUntil } from '../data/dates'
-import { useChat, useToday } from '../data/hooks'
-import { NEW_MENU, SIDEBAR_NEXT_TRIP, SIDEBAR_UPCOMING } from '../data/mock/us'
+import { daysUntil, formatDow } from '../data/dates'
+import { useChat, usePlans } from '../data/hooks'
+import { NEW_MENU } from '../data/mock/us'
 import { HER } from '../people'
 import { paths, tabFor } from '../paths'
 import { useSession } from '../session'
@@ -16,7 +19,7 @@ export function Sidebar() {
   const navigate = useNavigate()
   const { meName } = useSession()
   const { chatUnread, notesUnread } = useChat()
-  const today = useToday()
+  const { plans, activeTrip, today } = usePlans()
   const [newOpen, setNewOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -42,13 +45,16 @@ export function Sidebar() {
     { label: 'Memories', to: paths.timeline, on: tab === 'memories', badge: '' },
     { label: 'Plans', to: paths.plans, on: tab === 'plans', badge: '' },
     { label: 'Calendar', to: paths.calendar, on: tab === 'calendar', badge: '' },
-    { label: 'Chat', to: paths.chat, on: tab === 'chat' && !isNotes, badge: String(chatUnread) },
+    { label: 'Chat', to: paths.chat, on: tab === 'chat' && !isNotes, badge: chatUnread ? String(chatUnread) : '' },
     { label: 'Notes', to: paths.notes, on: isNotes, badge: notesUnread ? String(notesUnread) : '' },
     { label: 'Us', to: paths.us, on: tab === 'us', badge: '' },
   ]
 
-  const japanDays = Math.max(0, daysUntil(JAPAN_START, today))
-  const lakeIn = countdown(LAKE_START, today)
+  // Dated plans that have not ended, soonest first: the next two are Upcoming,
+  // the nearest trip is the card (or the trip underway, as its day count).
+  const dated = plans.filter((p) => p.group === 'next' && p.start).sort((a, b) => a.start!.localeCompare(b.start!))
+  const upcoming = dated.slice(0, 2)
+  const nextTrip = activeTrip ? null : dated.find((p) => p.type === 'Trip')
 
   return (
     <aside className="sidebar" aria-label="Sidebar">
@@ -161,35 +167,44 @@ export function Sidebar() {
         <Eyebrow size={10} style={{ padding: '0 10px' }}>
           Upcoming
         </Eyebrow>
-        {SIDEBAR_UPCOMING.map((row) => (
-          <div key={row.title} style={{ padding: '0 10px', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-            <span style={{ width: 6, height: 6, borderRadius: 999, background: row.dot, marginTop: 7, flex: 'none' }} />
+        {upcoming.length === 0 && (
+          <div style={{ padding: '0 10px', fontSize: 12, color: 'var(--fg3)' }}>Nothing on the calendar yet.</div>
+        )}
+        {upcoming.map((p) => (
+          <Link key={p.id} to={p.openPath} style={{ padding: '0 10px', display: 'flex', gap: 10, alignItems: 'flex-start', color: 'var(--fg1)' }}>
+            <span style={{ width: 6, height: 6, borderRadius: 999, background: p.color, marginTop: 7, flex: 'none' }} />
             <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 14 }}>{row.title}</div>
-              <div style={{ fontSize: 12, color: 'var(--fg3)' }}>{row.title === 'Lake weekend' ? `Sat · ${lakeIn}` : row.sub}</div>
+              <div style={{ fontSize: 14 }}>{p.name}</div>
+              <div style={{ fontSize: 12, color: 'var(--fg3)' }}>
+                {formatDow(p.start!)} · {p.countdown}
+              </div>
             </div>
-          </div>
+          </Link>
         ))}
-        <Link
-          to={paths.plan(SIDEBAR_NEXT_TRIP.planId)}
-          style={{
-            margin: '4px 10px 0',
-            padding: 12,
-            borderRadius: 8,
-            border: '1px solid var(--border)',
-            background: 'var(--bg)',
-            color: 'var(--fg1)',
-            display: 'block',
-          }}
-        >
-          <Eyebrow size={10} color="var(--accent)">
-            {SIDEBAR_NEXT_TRIP.eyebrow}
-          </Eyebrow>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginTop: 4 }}>
-            <span style={{ fontFamily: 'var(--font-serif)', fontSize: 32, lineHeight: 1 }}>{japanDays}</span>
-            <span style={{ fontSize: 13, color: 'var(--fg2)' }}>{SIDEBAR_NEXT_TRIP.line}</span>
-          </div>
-        </Link>
+        {(activeTrip || nextTrip) && (
+          <Link
+            to={activeTrip ? paths.today(activeTrip.id) : paths.plan(nextTrip!.id)}
+            style={{
+              margin: '4px 10px 0',
+              padding: 12,
+              borderRadius: 8,
+              border: '1px solid var(--border)',
+              background: 'var(--bg)',
+              color: 'var(--fg1)',
+              display: 'block',
+            }}
+          >
+            <Eyebrow size={10} color="var(--accent)">
+              {activeTrip ? 'Underway' : 'Next trip'}
+            </Eyebrow>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginTop: 4 }}>
+              <span style={{ fontFamily: 'var(--font-serif)', fontSize: 32, lineHeight: 1 }}>
+                {activeTrip ? activeTrip.day : Math.max(0, daysUntil(nextTrip!.start!, today))}
+              </span>
+              <span style={{ fontSize: 13, color: 'var(--fg2)' }}>{activeTrip ? `of ${activeTrip.length} · ${activeTrip.name}` : `days to ${nextTrip!.name}`}</span>
+            </div>
+          </Link>
+        )}
       </div>
 
       <div style={{ marginTop: 'auto', display: 'flex', gap: 10, padding: '0 8px', alignItems: 'center' }}>

@@ -2,6 +2,10 @@
 // tap opens a bottom sheet with the owner dot + kind eyebrow, the title, the
 // when line, then recurrence, the reminder line and the location. Past events
 // get the accent "Add a memory from this" CTA, future ones the outline "Edit".
+//
+// Not mounted yet: the calendar's own events collection (/api/events) arrives
+// with milestone 5, and nothing opens this sheet with placeholder data until
+// then. CalendarPage wires it back in once real events exist.
 
 import { useEffect, useRef } from 'react'
 import { Button, Sheet, dotFor } from '../../ui'

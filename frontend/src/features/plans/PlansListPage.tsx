@@ -1,8 +1,9 @@
 // mobile-b-plans.md section 1 - the Plans list: the Today card while a trip is
 // underway, the Up next / Dreaming / Past groups (one large card for the next
-// trip, compact rows for the rest), the FAB and the New plan sheet.
+// trip, compact rows for the rest), a search that filters by name or
+// destination, the FAB and the New plan sheet.
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { mockImage } from '../../data/mockImage'
 import { usePlans } from '../../data/hooks'
@@ -16,7 +17,18 @@ export default function PlansListPage() {
   const { groups, activeTrip, loading, error } = usePlans()
   const [params, setParams] = useSearchParams()
   const [sheet, setSheet] = useState(false)
+  const [searching, setSearching] = useState(false)
+  const [query, setQuery] = useState('')
   const isDesktop = useIsDesktop()
+
+  const q = query.trim().toLowerCase()
+  const shown = useMemo(
+    () =>
+      groups
+        .map((g) => ({ ...g, items: q ? g.items.filter((pl) => pl.name.toLowerCase().includes(q) || pl.dest.some((d) => d.toLowerCase().includes(q))) : g.items }))
+        .filter((g) => g.items.length > 0),
+    [groups, q],
+  )
 
   // the sidebar's New > Plan menu row lands here as /plans?new=1
   useEffect(() => {
@@ -42,10 +54,44 @@ export default function PlansListPage() {
     >
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', padding: '8px 20px 0' }}>
         <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: 36, lineHeight: 1, margin: 0, fontWeight: 400 }}>Plans</h1>
-        <IconButton label="Search plans">
-          <Icon name="search" size={20} />
+        <IconButton
+          label={searching ? 'Close search' : 'Search plans'}
+          aria-pressed={searching}
+          onClick={() => {
+            setSearching((s) => !s)
+            setQuery('')
+          }}
+        >
+          <Icon name={searching ? 'x' : 'search'} size={20} />
         </IconButton>
       </div>
+      {searching && (
+        <div style={{ padding: '12px 20px 0' }}>
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                setSearching(false)
+                setQuery('')
+              }
+            }}
+            placeholder="Name or place"
+            aria-label="Search plans"
+            autoFocus
+            style={{
+              height: 44,
+              width: '100%',
+              padding: '0 12px',
+              borderRadius: 8,
+              border: '1px solid var(--border)',
+              background: 'var(--surface)',
+              color: 'var(--fg1)',
+              fontSize: 14,
+            }}
+          />
+        </div>
+      )}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 24, padding: isDesktop ? '20px 20px 48px' : '20px 20px 110px' }}>
         {loading && <div style={{ fontSize: 13, color: 'var(--fg3)', textAlign: 'center', padding: '32px 0' }}>Loading…</div>}
@@ -58,7 +104,8 @@ export default function PlansListPage() {
             Plans didn't load. Tap to retry.
           </button>
         )}
-        {activeTrip && (
+        {q && shown.length === 0 && !loading && <div style={{ fontSize: 13, color: 'var(--fg3)', textAlign: 'center', padding: '24px 0' }}>Nothing called that. Try a place.</div>}
+        {activeTrip && !q && (
           <Link
             to={paths.today(activeTrip.id)}
             style={{
@@ -82,7 +129,7 @@ export default function PlansListPage() {
           </Link>
         )}
 
-        {groups.filter((g) => g.items.length > 0).map((g) => (
+        {shown.map((g) => (
           <div key={g.key} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <Eyebrow>{g.label}</Eyebrow>
             {g.items.map((pl) =>

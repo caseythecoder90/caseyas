@@ -18,6 +18,8 @@ export const SAVE_TO_MEMORIES = 'Save to memories'
 export const OPEN_IN_PLAN = 'Open in plan'
 export const PUT_ON_A_DAY = 'Put it on a day'
 export const PINNED_EYEBROW = `Pinned · ${PINNED.length}`
+/** the pinned eyebrow without a count (the honest, pre-milestone-4 panel) */
+export const PINNED_EYEBROW_PLAIN = 'Pinned'
 export const MEDIA_EYEBROW = 'Media in this chat'
 export const MEDIA_ALL = 'All →'
 export const SAVED_TO_MEMORIES_TOAST = 'Saved to memories'

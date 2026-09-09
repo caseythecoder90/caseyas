@@ -3,8 +3,8 @@
 // dates in the plan's color, and booked items show as timed entries with a
 // small plan badge". This module derives the visible month's plan bars, booked
 // items and agenda rows from usePlans() plus the plan bundles (same
-// ['plan-bundle', id] cache the Plans feature fills). The calendar's own
-// events stay mock until milestone 5.
+// ['plan-bundle', id] cache the Plans feature fills). Until the events
+// collection lands in milestone 5, this is everything the calendar shows.
 
 import { useQueries } from '@tanstack/react-query'
 import { useMemo } from 'react'
@@ -37,6 +37,10 @@ export interface CalendarItem {
   time: string
   /** 'Thu Feb 4 · 12:55 PM' | 'Thu Feb 4' */
   when: string
+  /** decimal hour at the destination (12.92 for 12:55) when the booking has a time; undefined = all day */
+  startHour?: number
+  /** decimal end hour when the booking carries an end on the same day */
+  endHour?: number
   /** server kind ('flight', 'stay', ...) for the card eyebrow */
   kind: string
   loc: string
@@ -108,6 +112,15 @@ export function planBarsFor(spans: PlanSpan[], info: MonthInfo): Record<number, 
   return bars
 }
 
+/** Decimal hour (12.92 for '...T12:55') from an ISO local date-time, or undefined without a time part. */
+export function hourOf(iso?: string | null): number | undefined {
+  if (!iso || iso.length < 16) return undefined
+  const h = Number(iso.slice(11, 13))
+  const m = Number(iso.slice(14, 16))
+  if (Number.isNaN(h) || Number.isNaN(m)) return undefined
+  return h + m / 60
+}
+
 /** Booked/done items whose start date falls inside the month, time-sorted. */
 export function monthItemsFor(items: ServerItem[], spans: PlanSpan[], info: MonthInfo): CalendarItem[] {
   const prefix = `${info.y}-${String(info.m).padStart(2, '0')}`
@@ -116,7 +129,8 @@ export function monthItemsFor(items: ServerItem[], spans: PlanSpan[], info: Mont
     .sort((a, b) => a.start!.localeCompare(b.start!))
     .map((i) => {
       const span = spans.find((s) => s.id === i.planId)
-      const hasTime = i.start!.length > 10
+      const startHour = hourOf(i.start)
+      const sameDayEnd = !!i.end && i.end.slice(0, 10) === i.start!.slice(0, 10)
       return {
         id: i.id,
         planId: i.planId,
@@ -124,8 +138,10 @@ export function monthItemsFor(items: ServerItem[], spans: PlanSpan[], info: Mont
         planColor: span?.color ?? 'var(--accent)',
         day: Number(i.start!.slice(8, 10)),
         title: i.title,
-        time: hasTime ? fmtTime(i.start) : '',
-        when: hasTime ? fmtDateTime(i.start) : formatDowMonthDay(i.start!.slice(0, 10)),
+        time: startHour !== undefined ? fmtTime(i.start) : '',
+        when: startHour !== undefined ? fmtDateTime(i.start) : formatDowMonthDay(i.start!.slice(0, 10)),
+        startHour,
+        endHour: sameDayEnd ? hourOf(i.end) : undefined,
         kind: i.kind,
         loc: i.location?.name ?? '',
         conf: i.confirmation ?? '',
@@ -136,6 +152,8 @@ export function monthItemsFor(items: ServerItem[], spans: PlanSpan[], info: Mont
 // ------------------------------------------------------------------ the hook
 
 export interface PlanCalendar {
+  /** the dated plans overlapping the month (the legend), earliest first */
+  plans: PlanSpan[]
   /** real spanning bars for the month, keyed by day */
   bars: Record<number, CalendarBar>
   items: CalendarItem[]
@@ -159,7 +177,10 @@ export function usePlanCalendar(info: MonthInfo): PlanCalendar {
         .map((p) => ({ id: p.id, name: p.name, color: p.color, dates: p.dates, start: p.start!, end: p.end ?? p.start! })),
     [plans],
   )
-  const overlapping = useMemo(() => spans.filter((s) => overlapsMonth(s, info)), [spans, info])
+  const overlapping = useMemo(
+    () => spans.filter((s) => overlapsMonth(s, info)).sort((a, b) => a.start.localeCompare(b.start)),
+    [spans, info],
+  )
 
   // One query per plan overlapping the month, on the same ['plan-bundle', id]
   // key the Plans feature uses, so this is normally a cache read. The grid
@@ -241,5 +262,5 @@ export function usePlanCalendar(info: MonthInfo): PlanCalendar {
     return rows
   }, [overlapping, info, today])
 
-  return { bars, items, itemsByDay, itemRows, spanRows }
+  return { plans: overlapping, bars, items, itemsByDay, itemRows, spanRows }
 }

@@ -66,6 +66,8 @@ export interface ToggleRowProps {
   gap?: number
   /** opt-in rows: 1.4 */
   subLineHeight?: number
+  /** hairline above the row (every row but the first of a card) */
+  divider?: boolean
 }
 
 /**
@@ -75,10 +77,10 @@ export interface ToggleRowProps {
  * is only an enlarged hit area for that switch, so it is role="presentation":
  * it carries no semantics of its own and needs no key handler of its own.
  */
-export function ToggleRow({ title, sub, on, onToggle, gap, subLineHeight }: ToggleRowProps) {
+export function ToggleRow({ title, sub, on, onToggle, gap, subLineHeight, divider = true }: ToggleRowProps) {
   const id = useId()
   return (
-    <div role="presentation" onClick={onToggle} style={{ ...ROW, gap, borderTop: HAIRLINE, cursor: 'pointer' }}>
+    <div role="presentation" onClick={onToggle} style={{ ...ROW, gap, borderTop: divider ? HAIRLINE : undefined, cursor: 'pointer' }}>
       <div style={{ minWidth: 0 }}>
         <div id={id} style={{ fontSize: 15 }}>
           {title}

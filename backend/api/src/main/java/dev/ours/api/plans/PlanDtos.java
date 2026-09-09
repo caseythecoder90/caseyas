@@ -36,7 +36,8 @@ public final class PlanDtos {
       List<String> destinations,
       String coverMediaId,
       BigDecimal rate,
-      Boolean archived) {}
+      Boolean archived,
+      String localCurrency) {}
 
   public record CreateItemRequest(
       @NotNull ItemKind kind,
@@ -78,7 +79,8 @@ public final class PlanDtos {
       List<PlanItemDocument.Link> links,
       List<String> attachmentIds,
       List<String> tags,
-      String notes) {}
+      String notes,
+      Boolean clearEnd) {}
 
   public record ReorderEntry(@NotBlank String itemId, Integer day, double sortKey) {}
 

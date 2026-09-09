@@ -1,6 +1,8 @@
 // Mobile tab bar (tokens-and-components.md section 13): 88px incl. home
 // indicator, blurred paper, hairline top border. Active = ink, inactive = fg3.
-// One badge, on Chat, covering messages and notes; hidden while on Chat/Notes.
+// One badge, on Chat, covering messages and notes; hidden while on Chat/Notes
+// and whenever the count is 0 (which it is until milestone 4 unless the design
+// preview is on).
 
 import { Link, useLocation } from 'react-router'
 import { useChat } from '../data/hooks'
@@ -19,7 +21,7 @@ export function TabBar() {
   const { pathname } = useLocation()
   const active = tabFor(pathname)
   const { badge } = useChat()
-  const showBadge = active !== 'chat'
+  const showBadge = active !== 'chat' && badge > 0
 
   return (
     <nav aria-label="Primary" className="tabbar">
